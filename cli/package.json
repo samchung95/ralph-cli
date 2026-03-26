@@ -1,0 +1,43 @@
+{
+  "name": "ralph-cli",
+  "version": "0.1.0",
+  "description": "CLI tool for Ralph - an autonomous AI agent loop that runs AI coding tools until all PRD items are complete",
+  "type": "module",
+  "bin": {
+    "ralph": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "keywords": [
+    "ralph",
+    "ai",
+    "agent",
+    "autonomous",
+    "claude",
+    "amp",
+    "prd",
+    "coding-agent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
