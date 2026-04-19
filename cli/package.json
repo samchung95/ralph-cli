@@ -1,7 +1,7 @@
 {
   "name": "ralph-cli",
   "version": "0.1.0",
-  "description": "CLI tool for Ralph - an autonomous AI agent loop that runs AI coding tools until all PRD items are complete",
+  "description": "CLI tool for Ralph - an autonomous AI agent loop that alternates developer and planner phases until final success criteria pass",
   "type": "module",
   "bin": {
     "ralph": "./dist/index.js"
@@ -23,6 +23,8 @@
     "autonomous",
     "claude",
     "amp",
+    "copilot",
+    "codex",
     "prd",
     "coding-agent"
   ],

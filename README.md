@@ -2,7 +2,7 @@
 
 ![Ralph](ralph.webp)
 
-Ralph is an autonomous AI agent loop that runs AI coding tools ([Amp](https://ampcode.com) or [Claude Code](https://docs.anthropic.com/en/docs/claude-code)) repeatedly until all PRD items are complete. Each iteration is a fresh instance with clean context. Memory persists via git history, `progress.txt`, and `prd.json`.
+Ralph is an autonomous AI agent loop that runs AI coding tools ([Amp](https://ampcode.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli), or [ChatGPT Codex](https://developers.openai.com/codex/cli)) in alternating developer and planner phases until a global final success criteria is met. Each phase is a fresh instance with clean context. Memory persists via git history, `progress.txt`, and the evolving `prd.json`.
 
 Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 
@@ -13,45 +13,91 @@ Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 - One of the following AI coding tools installed and authenticated:
   - [Amp CLI](https://ampcode.com) (default)
   - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`npm install -g @anthropic-ai/claude-code`)
+  - [GitHub Copilot CLI](https://docs.github.com/copilot/how-tos/set-up/install-copilot-cli) (`npm install -g @github/copilot`)
+  - [ChatGPT Codex CLI](https://developers.openai.com/codex/cli) (`npm i -g @openai/codex`)
 - `jq` installed (`brew install jq` on macOS)
 - A git repository for your project
 
-## Setup
+## Install
 
-### Option 1: Copy to your project
+### Recommended: Node CLI
 
-Copy the ralph files into your project:
+Install Ralph globally:
+
+```bash
+npm install -g ralph-cli
+```
+
+Initialize Ralph in your project:
+
+```bash
+cd your-project
+ralph init
+```
+
+This creates:
+
+- `DEVELOPER.md`
+- `PLANNER.md`
+- `prd.json.example`
+- `progress.txt`
+
+Install the `/ralph` setup skill into your AI tool:
+
+```bash
+# Claude Code (default)
+ralph install
+
+# Amp
+ralph install --tool amp
+
+# GitHub Copilot CLI
+ralph install --tool copilot
+
+# ChatGPT Codex
+ralph install --tool codex
+```
+
+### Manual Script Mode
+
+You can also copy the shell runner into a project:
 
 ```bash
 # From your project root
 mkdir -p scripts/ralph
 cp /path/to/ralph/ralph.sh scripts/ralph/
-
-# Copy the prompt template for your AI tool of choice:
-cp /path/to/ralph/prompt.md scripts/ralph/prompt.md    # For Amp
-# OR
-cp /path/to/ralph/CLAUDE.md scripts/ralph/CLAUDE.md    # For Claude Code
+cp /path/to/ralph/DEVELOPER.md scripts/ralph/DEVELOPER.md
+cp /path/to/ralph/PLANNER.md scripts/ralph/PLANNER.md
+cp /path/to/ralph/prd.json.example scripts/ralph/prd.json.example
 
 chmod +x scripts/ralph/ralph.sh
 ```
 
-### Option 2: Install skills globally (Amp)
+### Manual Skill Install
 
-Copy the skills to your Amp or Claude config for use across all projects:
+If you are not using `ralph install`, copy the setup skill manually:
 
-For AMP
+For Amp:
 ```bash
-cp -r skills/prd ~/.config/amp/skills/
 cp -r skills/ralph ~/.config/amp/skills/
 ```
 
-For Claude Code (manual)
+For Claude Code:
 ```bash
-cp -r skills/prd ~/.claude/skills/
 cp -r skills/ralph ~/.claude/skills/
 ```
 
-### Option 3: Use as Claude Code Marketplace
+For GitHub Copilot CLI:
+```bash
+cp -r skills/ralph ~/.copilot/skills/
+```
+
+For ChatGPT Codex:
+```bash
+cp -r skills/ralph ~/.agents/skills/
+```
+
+### Claude Code Marketplace
 
 Add the Ralph marketplace to Claude Code:
 
@@ -59,19 +105,15 @@ Add the Ralph marketplace to Claude Code:
 /plugin marketplace add snarktank/ralph
 ```
 
-Then install the skills:
+Then install the skill:
 
 ```bash
 /plugin install ralph-skills@ralph-marketplace
 ```
 
-Available skills after installation:
-- `/prd` - Generate Product Requirements Documents
-- `/ralph` - Convert PRDs to prd.json format
-
-Skills are automatically invoked when you ask Claude to:
-- "create a prd", "write prd for", "plan this feature"
-- "convert this prd", "turn into ralph format", "create prd.json"
+The skill is automatically invoked when you ask Claude to:
+- "set up ralph", "start ralph", "plan this with ralph"
+- "create prd.json", "prepare the initial ralph step"
 
 ### Configure Amp auto-handoff (recommended)
 
@@ -87,60 +129,82 @@ This enables automatic handoff when context fills up, allowing Ralph to handle l
 
 ## Workflow
 
-### 1. Create a PRD
+### 1. Set Up the First Ralph Step
 
-Use the PRD skill to generate a detailed requirements document:
-
-```
-Load the prd skill and create a PRD for [your feature description]
-```
-
-Answer the clarifying questions. The skill saves output to `tasks/prd-[feature-name].md`.
-
-### 2. Convert PRD to Ralph format
-
-Use the Ralph skill to convert the markdown PRD to JSON:
+Use the Ralph skill to create the initial evolving `prd.json`:
 
 ```
-Load the ralph skill and convert tasks/prd-[feature-name].md to prd.json
+Load the ralph skill and set up Ralph for [your feature description]
 ```
 
-This creates `prd.json` with user stories structured for autonomous execution.
+Answer any clarifying questions. The skill creates `prd.json` with `finalSuccessCriteria`, a first small `userStories` slice, and a `prdChain`. The planner will evolve the next slice after each developer pass.
 
-### 3. Run Ralph
+### 2. Run Ralph
+
+With the Node CLI:
+
+```bash
+# Claude Code, 10 cycles by default
+ralph run
+
+# Claude Code, 20 cycles
+ralph run 20
+
+# Amp
+ralph run --tool amp
+
+# GitHub Copilot CLI
+ralph run --tool copilot
+
+# ChatGPT Codex
+ralph run --tool codex
+
+# Fully autonomous Claude Code mode
+ralph run --dangerously-skip-permissions 15
+```
+
+With the copied shell script:
 
 ```bash
 # Using Amp (default)
-./scripts/ralph/ralph.sh [max_iterations]
+./scripts/ralph/ralph.sh [max_cycles]
 
 # Using Claude Code
-./scripts/ralph/ralph.sh --tool claude [max_iterations]
+./scripts/ralph/ralph.sh --tool claude [max_cycles]
+
+# Using GitHub Copilot CLI
+./scripts/ralph/ralph.sh --tool copilot [max_cycles]
+
+# Using ChatGPT Codex
+./scripts/ralph/ralph.sh --tool codex [max_cycles]
 ```
 
-Default is 10 iterations. Use `--tool amp` or `--tool claude` to select your AI coding tool.
+Default is 10 cycles. Use `--tool amp`, `--tool claude`, `--tool copilot`, or `--tool codex` to select your AI coding tool.
 
 Ralph will:
 1. Create a feature branch (from PRD `branchName`)
-2. Pick the highest priority story where `passes: false`
-3. Implement that single story
-4. Run quality checks (typecheck, tests)
-5. Commit if checks pass
-6. Update `prd.json` to mark story as `passes: true`
-7. Append learnings to `progress.txt`
-8. Repeat until all stories pass or max iterations reached
+2. Run a developer phase from `DEVELOPER.md`
+3. Implement the highest priority story where `passes: false`
+4. Commit if checks pass and mark the story complete in `prd.json`
+5. Run a planner phase from `PLANNER.md`
+6. Check `finalSuccessCriteria`
+7. If success criteria pass, output `<promise>COMPLETE</promise>`
+8. Otherwise, evolve `prd.json` with the next PRD slice and repeat
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `ralph.sh` | The bash loop that spawns fresh AI instances (supports `--tool amp` or `--tool claude`) |
-| `prompt.md` | Prompt template for Amp |
-| `CLAUDE.md` | Prompt template for Claude Code |
-| `prd.json` | User stories with `passes` status (the task list) |
-| `prd.json.example` | Example PRD format for reference |
+| `ralph.sh` | The bash loop that spawns fresh AI instances (supports `--tool amp`, `--tool claude`, `--tool copilot`, or `--tool codex`) |
+| `DEVELOPER.md` | Source prompt for implementation phases |
+| `PLANNER.md` | Source prompt for evaluation and next-PRD planning phases |
+| `prompt.md` | Runtime prompt file generated for Amp |
+| `CLAUDE.md` | Runtime prompt file generated for Claude Code |
+| `AGENTS.md` | Runtime prompt file generated for GitHub Copilot CLI and ChatGPT Codex |
+| `prd.json` | Evolving PRD chain with `finalSuccessCriteria`, active stories, and planning metadata |
+| `prd.json.example` | Example evolving PRD format for reference |
 | `progress.txt` | Append-only learnings for future iterations |
-| `skills/prd/` | Skill for generating PRDs (works with Amp and Claude Code) |
-| `skills/ralph/` | Skill for converting PRDs to JSON (works with Amp and Claude Code) |
+| `skills/ralph/` | Skill for setting up the initial evolving PRD chain (works with Amp, Claude Code, GitHub Copilot CLI, and ChatGPT Codex) |
 | `.claude-plugin/` | Plugin manifest for Claude Code marketplace discovery |
 | `flowchart/` | Interactive visualization of how Ralph works |
 
@@ -160,12 +224,16 @@ npm run dev
 
 ## Critical Concepts
 
-### Each Iteration = Fresh Context
+### Each Phase = Fresh Context
 
-Each iteration spawns a **new AI instance** (Amp or Claude Code) with clean context. The only memory between iterations is:
-- Git history (commits from previous iterations)
+Each developer or planner phase spawns a **new AI instance** (Amp, Claude Code, GitHub Copilot CLI, or ChatGPT Codex) with clean context. The only memory between phases is:
+- Git history (commits from previous phases)
 - `progress.txt` (learnings and context)
-- `prd.json` (which stories are done)
+- `prd.json` (current slice, PRD chain, and final success criteria)
+
+### Evolving PRDs
+
+Ralph no longer needs a fully preplanned backlog. The first `prd.json` contains a global `finalSuccessCriteria` and a small first slice. After each developer phase, the planner checks the work so far. If the final criteria are not met, it writes the next small PRD slice into `userStories` and records the chain in `prdChain`.
 
 ### Small Tasks
 
@@ -182,11 +250,11 @@ Too big (split these):
 - "Add authentication"
 - "Refactor the API"
 
-### AGENTS.md Updates Are Critical
+### Agent Instruction Updates Are Critical
 
-After each iteration, Ralph updates the relevant `AGENTS.md` files with learnings. This is key because AI coding tools automatically read these files, so future iterations (and future human developers) benefit from discovered patterns, gotchas, and conventions.
+After each developer phase, Ralph can update relevant agent instruction files with learnings. This is key because AI coding tools automatically read these files, so future phases and future human developers benefit from discovered patterns, gotchas, and conventions.
 
-Examples of what to add to AGENTS.md:
+Examples of what to add to agent instruction files:
 - Patterns discovered ("this codebase uses X for Y")
 - Gotchas ("do not forget to update Z when changing W")
 - Useful context ("the settings panel is in component X")
@@ -204,7 +272,7 @@ Frontend stories must include "Verify in browser using dev-browser skill" in acc
 
 ### Stop Condition
 
-When all stories have `passes: true`, Ralph outputs `<promise>COMPLETE</promise>` and the loop exits.
+When the planner verifies `finalSuccessCriteria.passes: true`, it outputs `<promise>COMPLETE</promise>` and the loop exits.
 
 ## Debugging
 
@@ -213,6 +281,9 @@ Check current state:
 ```bash
 # See which stories are done
 cat prd.json | jq '.userStories[] | {id, title, passes}'
+
+# See global completion status
+cat prd.json | jq '.finalSuccessCriteria'
 
 # See learnings from previous iterations
 cat progress.txt
@@ -223,7 +294,7 @@ git log --oneline -10
 
 ## Customizing the Prompt
 
-After copying `prompt.md` (for Amp) or `CLAUDE.md` (for Claude Code) to your project, customize it for your project:
+After copying `DEVELOPER.md` and `PLANNER.md` to your project, customize them for your project:
 - Add project-specific quality check commands
 - Include codebase conventions
 - Add common gotchas for your stack
@@ -237,3 +308,5 @@ Ralph automatically archives previous runs when you start a new feature (differe
 - [Geoffrey Huntley's Ralph article](https://ghuntley.com/ralph/)
 - [Amp documentation](https://ampcode.com/manual)
 - [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code)
+- [GitHub Copilot CLI documentation](https://docs.github.com/copilot/concepts/agents/about-copilot-cli)
+- [ChatGPT Codex CLI documentation](https://developers.openai.com/codex/cli)

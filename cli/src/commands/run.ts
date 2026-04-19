@@ -2,52 +2,110 @@ import { resolve, join } from "path";
 import { log } from "../utils/log.js";
 import { fileExists, readText, writeText, copyFileSafe } from "../utils/files.js";
 import { exec, commandExists } from "../utils/exec.js";
+import { normalizeTool, TOOL_NAMES } from "../types.js";
 import type { RunOptions, Tool } from "../types.js";
 
 const COMPLETION_SIGNAL = "<promise>COMPLETE</promise>";
+type Phase = "developer" | "planner";
+
+const PHASE_PROMPTS: Record<Phase, string> = {
+  developer: "DEVELOPER.md",
+  planner: "PLANNER.md",
+};
+
+interface ToolConfig {
+  binary: string;
+  runtimePromptFile: string;
+  args: (dangerouslySkipPermissions: boolean) => string[];
+}
+
+const TOOL_CONFIG: Record<Tool, ToolConfig> = {
+  claude: {
+    binary: "claude",
+    runtimePromptFile: "CLAUDE.md",
+    args: (dangerouslySkipPermissions) => {
+      const args: string[] = [];
+      if (dangerouslySkipPermissions) {
+        args.push("--dangerously-skip-permissions");
+      }
+      args.push("--print");
+      return args;
+    },
+  },
+  amp: {
+    binary: "amp",
+    runtimePromptFile: "prompt.md",
+    args: () => ["--dangerously-allow-all"],
+  },
+  copilot: {
+    binary: "copilot",
+    runtimePromptFile: "AGENTS.md",
+    args: () => ["--allow-all", "--autopilot", "--no-ask-user"],
+  },
+  codex: {
+    binary: "codex",
+    runtimePromptFile: "AGENTS.md",
+    args: () => ["exec", "--full-auto", "-"],
+  },
+};
 
 /**
- * `ralph run [iterations]` — TypeScript port of ralph.sh.
+ * `ralph run [cycles]` — TypeScript port of ralph.sh.
  *
- * Spawns a fresh Claude Code (or Amp) instance per iteration, feeding it the
- * CLAUDE.md prompt. Loops until all PRD stories pass or max iterations reached.
+ * Spawns fresh AI tool instances in alternating developer/planner phases.
+ * The phase source prompt is written to the tool-specific runtime prompt file
+ * before each run. Loops until the planner emits the completion promise.
  */
 export async function runCommand(
-  iterations: string,
+  cycles: string,
   options: RunOptions
 ): Promise<void> {
-  const maxIterations = parseInt(iterations, 10);
-  const tool: Tool = options.tool;
+  const maxCycles = parseInt(cycles, 10);
+  const tool = normalizeTool(options.tool);
   const dir = resolve(options.dir);
   const dangerouslySkipPermissions = options.dangerouslySkipPermissions;
 
+  if (!tool) {
+    log.error(`Invalid tool '${options.tool}'. Must be one of: ${TOOL_NAMES}.`);
+    process.exit(1);
+  }
+
+  if (Number.isNaN(maxCycles) || maxCycles < 1) {
+    log.error("Cycles must be a positive number.");
+    process.exit(1);
+  }
+
+  const toolConfig = TOOL_CONFIG[tool];
+
   // ── Validate tool is installed ──────────────────────────────────────────
-  const toolBinary = tool === "claude" ? "claude" : "amp";
-  if (!(await commandExists(toolBinary))) {
+  if (!(await commandExists(toolConfig.binary))) {
     log.error(
-      `${toolBinary} is not installed or not on PATH. Install it first.`
+      `${toolConfig.binary} is not installed or not on PATH. Install it first.`
     );
     process.exit(1);
   }
 
   // ── Validate required files exist ──────────────────────────────────────
-  const promptFile = tool === "claude" ? "CLAUDE.md" : "prompt.md";
-  const promptPath = join(dir, promptFile);
   const prdPath = join(dir, "prd.json");
   const progressPath = join(dir, "progress.txt");
   const lastBranchPath = join(dir, ".last-branch");
 
-  if (!(await fileExists(promptPath))) {
-    log.error(`${promptFile} not found in ${dir}`);
-    log.info('Run "ralph init" first to set up the project.');
-    process.exit(1);
+  for (const promptFile of Object.values(PHASE_PROMPTS)) {
+    const promptPath = join(dir, promptFile);
+    if (!(await fileExists(promptPath))) {
+      log.error(`${promptFile} not found in ${dir}`);
+      log.info('Run "ralph init" first to set up the project.');
+      process.exit(1);
+    }
   }
 
   if (!(await fileExists(prdPath))) {
     log.error(`prd.json not found in ${dir}`);
-    log.info("Create a prd.json with your user stories first.");
+    log.info("Create a prd.json with finalSuccessCriteria and the first PRD slice.");
     process.exit(1);
   }
+
+  await warnIfMissingFinalSuccessCriteria(prdPath);
 
   // ── Archive previous run if branch changed ─────────────────────────────
   if (await fileExists(lastBranchPath)) {
@@ -101,72 +159,100 @@ export async function runCommand(
   }
 
   // ── Run the loop ──────────────────────────────────────────────────────
-  log.header(`Starting Ralph — Tool: ${tool} — Max iterations: ${maxIterations}`);
+  log.header(`Starting Ralph — Tool: ${tool} — Max cycles: ${maxCycles}`);
 
-  for (let i = 1; i <= maxIterations; i++) {
-    log.iteration(i, maxIterations, tool);
+  for (let i = 1; i <= maxCycles; i++) {
+    log.iteration(i, maxCycles, `${tool} developer`);
 
-    const result = await runIteration(tool, dir, dangerouslySkipPermissions);
+    const developResult = await runPhase(
+      tool,
+      dir,
+      "developer",
+      dangerouslySkipPermissions
+    );
 
-    // Check for completion signal
-    if (result.includes(COMPLETION_SIGNAL)) {
+    if (developResult.includes(COMPLETION_SIGNAL)) {
       console.log("");
-      log.success("Ralph completed all tasks!");
-      log.info(`Completed at iteration ${i} of ${maxIterations}`);
+      log.success("Ralph completed the final success criteria!");
+      log.info(`Completed during developer phase of cycle ${i} of ${maxCycles}`);
       process.exit(0);
     }
 
-    log.info(`Iteration ${i} complete. Continuing...`);
+    log.info(`Developer phase ${i} complete. Planning next...`);
 
-    // Small pause between iterations
-    if (i < maxIterations) {
+    log.iteration(i, maxCycles, `${tool} planner`);
+
+    const planResult = await runPhase(
+      tool,
+      dir,
+      "planner",
+      dangerouslySkipPermissions
+    );
+
+    if (planResult.includes(COMPLETION_SIGNAL)) {
+      console.log("");
+      log.success("Ralph completed the final success criteria!");
+      log.info(`Completed during planner phase of cycle ${i} of ${maxCycles}`);
+      process.exit(0);
+    }
+
+    log.info(`Planner phase ${i} complete. Continuing...`);
+
+    // Small pause between cycles
+    if (i < maxCycles) {
       await sleep(2000);
     }
   }
 
   console.log("");
   log.warn(
-    `Ralph reached max iterations (${maxIterations}) without completing all tasks.`
+    `Ralph reached max cycles (${maxCycles}) without meeting the final success criteria.`
   );
   log.info(`Check ${progressPath} for status.`);
   process.exit(1);
 }
 
 /**
- * Run a single iteration — spawn the AI tool with the prompt piped to stdin.
+ * Run a single phase — write the source phase prompt to the tool's expected
+ * runtime prompt file, then spawn the AI tool with that prompt piped to stdin.
  * Streams output to the terminal in real-time and returns the full output.
  */
-async function runIteration(
+async function runPhase(
   tool: Tool,
   dir: string,
+  phase: Phase,
   dangerouslySkipPermissions: boolean
 ): Promise<string> {
-  if (tool === "claude") {
-    const promptPath = join(dir, "CLAUDE.md");
-    const prompt = await readText(promptPath);
+  const toolConfig = TOOL_CONFIG[tool];
+  const phasePromptPath = join(dir, PHASE_PROMPTS[phase]);
+  const runtimePromptPath = join(dir, toolConfig.runtimePromptFile);
+  const prompt = await readText(phasePromptPath);
 
-    const args: string[] = [];
-    if (dangerouslySkipPermissions) {
-      args.push("--dangerously-skip-permissions");
+  await writeText(runtimePromptPath, prompt);
+  log.info(`Loaded ${PHASE_PROMPTS[phase]} into ${toolConfig.runtimePromptFile}`);
+
+  const result = await exec(
+    toolConfig.binary,
+    toolConfig.args(dangerouslySkipPermissions),
+    {
+      cwd: dir,
+      stdin: prompt,
     }
-    args.push("--print");
+  );
 
-    const result = await exec("claude", args, {
-      cwd: dir,
-      stdin: prompt,
-    });
+  return result.stdout + result.stderr;
+}
 
-    return result.stdout + result.stderr;
-  } else {
-    const promptPath = join(dir, "prompt.md");
-    const prompt = await readText(promptPath);
-
-    const result = await exec("amp", ["--dangerously-allow-all"], {
-      cwd: dir,
-      stdin: prompt,
-    });
-
-    return result.stdout + result.stderr;
+async function warnIfMissingFinalSuccessCriteria(prdPath: string): Promise<void> {
+  try {
+    const prd = JSON.parse(await readText(prdPath));
+    if (!prd.finalSuccessCriteria) {
+      log.warn(
+        "prd.json has no finalSuccessCriteria. The planner phase should migrate it before the loop can complete."
+      );
+    }
+  } catch {
+    log.warn("Could not parse prd.json. The agent will need to fix it before continuing.");
   }
 }
 

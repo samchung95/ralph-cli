@@ -1,10 +1,10 @@
 import { join, resolve } from "path";
-import { copyFileSafe, fileExists, getPackageDir } from "../utils/files.js";
+import { copyFileSafe, fileExists, getPackageDir, writeText } from "../utils/files.js";
 import { log } from "../utils/log.js";
 import type { InitOptions } from "../types.js";
 
 /**
- * `ralph init` — Copy CLAUDE.md and prd.json.example into the target project directory.
+ * `ralph init` — Copy phase prompts and prd.json.example into the target project directory.
  */
 export async function initCommand(options: InitOptions): Promise<void> {
   const dir = resolve(options.dir);
@@ -13,15 +13,17 @@ export async function initCommand(options: InitOptions): Promise<void> {
   log.header("Ralph Init");
   log.info(`Target directory: ${dir}`);
 
-  // Copy CLAUDE.md
-  const claudeSrc = join(templateDir, "CLAUDE.md");
-  const claudeDest = join(dir, "CLAUDE.md");
+  const promptFiles = ["DEVELOPER.md", "PLANNER.md"];
+  for (const promptFile of promptFiles) {
+    const src = join(templateDir, promptFile);
+    const dest = join(dir, promptFile);
 
-  if ((await fileExists(claudeDest)) && !options.force) {
-    log.warn("CLAUDE.md already exists. Use --force to overwrite.");
-  } else {
-    await copyFileSafe(claudeSrc, claudeDest);
-    log.success("Copied CLAUDE.md");
+    if ((await fileExists(dest)) && !options.force) {
+      log.warn(`${promptFile} already exists. Use --force to overwrite.`);
+    } else {
+      await copyFileSafe(src, dest);
+      log.success(`Copied ${promptFile}`);
+    }
   }
 
   // Copy prd.json.example
@@ -35,8 +37,19 @@ export async function initCommand(options: InitOptions): Promise<void> {
     log.success("Copied prd.json.example");
   }
 
+  const progressPath = join(dir, "progress.txt");
+  if ((await fileExists(progressPath)) && !options.force) {
+    log.warn("progress.txt already exists. Use --force to overwrite.");
+  } else {
+    await writeText(
+      progressPath,
+      `# Ralph Progress Log\nStarted: ${new Date()}\n---\n`
+    );
+    log.success("Created progress.txt");
+  }
+
   console.log("");
   log.info("Next steps:");
-  log.step("1. Create a prd.json from the example (or use `ralph install` to get the PRD skill)");
-  log.step("2. Run `ralph run [iterations]` to start the agent loop");
+  log.step("1. Create prd.json from the example with finalSuccessCriteria");
+  log.step("2. Run `ralph run [cycles]` to start the develop/plan loop");
 }

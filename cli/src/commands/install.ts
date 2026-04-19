@@ -3,18 +3,32 @@ import { homedir } from "os";
 import { copyFileSafe, fileExists, getPackageDir } from "../utils/files.js";
 import { log } from "../utils/log.js";
 import { mkdir, readdir } from "fs/promises";
+import { normalizeTool, TOOL_NAMES } from "../types.js";
+import type { InstallOptions, Tool } from "../types.js";
+
+const SKILL_DIRS: Record<Tool, string> = {
+  claude: join(homedir(), ".claude", "skills"),
+  amp: join(homedir(), ".config", "amp", "skills"),
+  copilot: join(homedir(), ".copilot", "skills"),
+  codex: join(homedir(), ".agents", "skills"),
+};
 
 /**
- * `ralph install` — Install Ralph skills into Claude Code's ~/.claude/skills/ directory.
+ * `ralph install` — Install the Ralph setup skill into a supported AI tool's skills directory.
  */
-export async function installCommand(): Promise<void> {
+export async function installCommand(options: InstallOptions): Promise<void> {
   log.header("Ralph Install Skills");
 
-  const templateDir = join(getPackageDir(), "templates", "skills");
-  const claudeSkillsDir = join(homedir(), ".claude", "skills");
+  const tool = normalizeTool(options.tool);
+  if (!tool) {
+    log.error(`Invalid tool '${options.tool}'. Must be one of: ${TOOL_NAMES}.`);
+    process.exit(1);
+  }
 
-  // Ensure ~/.claude/skills/ exists
-  await mkdir(claudeSkillsDir, { recursive: true });
+  const templateDir = join(getPackageDir(), "templates", "skills");
+  const skillsDir = SKILL_DIRS[tool];
+
+  await mkdir(skillsDir, { recursive: true });
 
   // Read available skills from the templates
   const skills = await readdir(templateDir, { withFileTypes: true });
@@ -24,7 +38,7 @@ export async function installCommand(): Promise<void> {
 
     const skillName = entry.name;
     const srcSkillDir = join(templateDir, skillName);
-    const destSkillDir = join(claudeSkillsDir, skillName);
+    const destSkillDir = join(skillsDir, skillName);
 
     // Copy SKILL.md from each skill directory
     const srcSkillFile = join(srcSkillDir, "SKILL.md");
@@ -37,8 +51,7 @@ export async function installCommand(): Promise<void> {
   }
 
   console.log("");
-  log.info("Skills installed to ~/.claude/skills/");
-  log.info("Available skills:");
-  log.step("/prd — Generate Product Requirements Documents");
-  log.step("/ralph — Convert PRDs to prd.json format");
+  log.info(`Skills installed to ${skillsDir}`);
+  log.info("Available skill:");
+  log.step("/ralph — Set up the initial evolving prd.json and progress.txt");
 }

@@ -17,7 +17,7 @@ export const log = {
     console.log(chalk.bold.cyan("═".repeat(60)));
     console.log(
       chalk.bold.cyan(
-        `  Ralph Iteration ${current} of ${max} (${tool})`
+        `  Ralph Cycle ${current} of ${max} (${tool})`
       )
     );
     console.log(chalk.bold.cyan("═".repeat(60)));

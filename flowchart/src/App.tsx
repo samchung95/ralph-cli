@@ -36,18 +36,18 @@ const phaseColors: Record<Phase, { bg: string; border: string }> = {
 
 const allSteps: { id: string; label: string; description: string; phase: Phase }[] = [
   // Setup phase (vertical)
-  { id: '1', label: 'You write a PRD', description: 'Define what you want to build', phase: 'setup' },
-  { id: '2', label: 'Convert to prd.json', description: 'Break into small user stories', phase: 'setup' },
-  { id: '3', label: 'Run ralph.sh', description: 'Starts the autonomous loop', phase: 'setup' },
+  { id: '1', label: 'Define success', description: 'Write the final outcome', phase: 'setup' },
+  { id: '2', label: 'Create prd.json', description: 'Start with one small slice', phase: 'setup' },
+  { id: '3', label: 'Run ralph.sh', description: 'Starts the develop/plan loop', phase: 'setup' },
   // Loop phase
-  { id: '4', label: 'AI picks a story', description: 'Finds next passes: false', phase: 'loop' },
-  { id: '5', label: 'Implements it', description: 'Writes code, runs tests', phase: 'loop' },
+  { id: '4', label: 'Developer picks story', description: 'Finds next passes: false', phase: 'loop' },
+  { id: '5', label: 'Developer builds it', description: 'Writes code, runs tests', phase: 'loop' },
   { id: '6', label: 'Commits changes', description: 'If tests pass', phase: 'loop' },
-  { id: '7', label: 'Updates prd.json', description: 'Sets passes: true', phase: 'loop' },
-  { id: '8', label: 'Logs to progress.txt', description: 'Saves learnings', phase: 'loop' },
-  { id: '9', label: 'More stories?', description: '', phase: 'decision' },
+  { id: '7', label: 'Planner reviews', description: 'Checks work so far', phase: 'loop' },
+  { id: '8', label: 'Plans next slice', description: 'Evolves prd.json', phase: 'loop' },
+  { id: '9', label: 'Success criteria met?', description: '', phase: 'decision' },
   // Exit
-  { id: '10', label: 'Done!', description: 'All stories complete', phase: 'done' },
+  { id: '10', label: 'Done!', description: 'Final criteria pass', phase: 'done' },
 ];
 
 const notes = [
@@ -57,14 +57,13 @@ const notes = [
     position: { x: 340, y: 100 },
     color: { bg: '#f5f0ff', border: '#8b5cf6' },
     content: `{
-  "id": "US-001",
-  "title": "Add priority field to database",
-  "acceptanceCriteria": [
-    "Add priority column to tasks table",
-    "Generate and run migration",
-    "Typecheck passes"
-  ],
-  "passes": false
+  "finalSuccessCriteria": {
+    "description": "Priority works end to end",
+    "passes": false
+  },
+  "planning": { "cycle": 1 },
+  "prdChain": [{ "cycle": 1 }],
+  "userStories": [{ "id": "US-001" }]
 }`,
   },
   {
@@ -72,9 +71,9 @@ const notes = [
     appearsWithStep: 8,
     position: { x: 480, y: 620 },
     color: { bg: '#fdf4f0', border: '#c97a50' },
-    content: `Also updates AGENTS.md with
-patterns discovered, so future
-iterations learn from this one.`,
+    content: `Planner checks the global goal.
+If it is not met, it writes the
+next small PRD slice.`,
   },
 ];
 
@@ -326,7 +325,7 @@ function App() {
     <div className="app-container">
       <div className="header">
         <h1>How Ralph Works</h1>
-        <p>Autonomous AI agent loop for completing PRDs</p>
+        <p>Autonomous AI agent loop for evolving PRDs</p>
       </div>
       <div className="flow-container">
         <ReactFlow

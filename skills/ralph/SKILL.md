@@ -1,28 +1,96 @@
 ---
 name: ralph
-description: "Convert PRDs to prd.json format for the Ralph autonomous agent system. Use when you have an existing PRD and need to convert it to Ralph's JSON format. Triggers on: convert this prd, turn this into ralph format, create prd.json from this, ralph json."
+description: "Set up Ralph's first evolving PRD step. Use when starting a Ralph run, creating prd.json, planning a feature for Ralph, or preparing the initial develop/plan loop. Triggers on: set up ralph, start ralph, create prd.json, plan this with ralph, ralph setup."
 user-invocable: true
 ---
 
-# Ralph PRD Converter
+# Ralph Setup
 
-Converts existing PRDs to the prd.json format that Ralph uses for autonomous execution.
+Set up the first step for Ralph's evolving develop/plan loop.
+
+Ralph does not need a fully preplanned backlog. It needs:
+
+1. A global `finalSuccessCriteria` that anchors the loop.
+2. A first small implementation slice in `userStories`.
+3. A `prdChain` entry for cycle 1.
+4. A `progress.txt` file for durable context.
+
+The planner agent will inspect work after each developer pass and write the next PRD slice until the final success criteria pass.
 
 ---
 
 ## The Job
 
-Take a PRD (markdown file or text) and convert it to `prd.json` in your ralph directory.
+1. Understand the feature or outcome the user wants.
+2. Ask only the essential clarifying questions.
+3. Create or update `prd.json` directly in the Ralph directory.
+4. Create `progress.txt` if it does not exist.
+5. Do not implement code.
 
 ---
 
-## Output Format
+## Clarifying Questions
+
+Ask 3-5 questions only when needed. Focus on:
+
+- Final outcome: How do we know the whole feature is done?
+- Scope: What should be included or excluded?
+- First slice: What is the smallest useful implementation step?
+- Verification: What checks prove the work is correct?
+- UI/browser needs: Does this require visual verification?
+
+Use lettered options when helpful:
+
+```text
+1. What is the target scope?
+   A. Minimal viable version
+   B. Full end-to-end feature
+   C. Backend/API only
+   D. UI only
+
+2. What should Ralph implement first?
+   A. Data model foundation
+   B. Core backend behavior
+   C. First visible UI path
+   D. Other: [please specify]
+```
+
+If the user's request already has enough detail, create the files without asking more.
+
+---
+
+## prd.json Format
+
+Write valid JSON:
 
 ```json
 {
   "project": "[Project Name]",
   "branchName": "ralph/[feature-name-kebab-case]",
-  "description": "[Feature description from PRD title/intro]",
+  "description": "[First PRD slice description]",
+  "finalSuccessCriteria": {
+    "description": "[Global outcome for the whole feature]",
+    "acceptanceCriteria": [
+      "Final criterion 1",
+      "Final criterion 2",
+      "Typecheck passes"
+    ],
+    "passes": false,
+    "notes": ""
+  },
+  "planning": {
+    "cycle": 1,
+    "currentObjective": "[What the first PRD slice should accomplish]"
+  },
+  "prdChain": [
+    {
+      "cycle": 1,
+      "objective": "[First PRD slice objective]",
+      "status": "active",
+      "storyIds": ["US-001"],
+      "notes": ""
+    }
+  ],
   "userStories": [
     {
       "id": "US-001",
@@ -43,184 +111,121 @@ Take a PRD (markdown file or text) and convert it to `prd.json` in your ralph di
 
 ---
 
-## Story Size: The Number One Rule
+## First Slice Rules
 
-**Each story must be completable in ONE Ralph iteration (one context window).**
+- Prefer exactly one user story for cycle 1.
+- Use at most three stories only if they are tiny and tightly coupled.
+- The first story must be completable in one developer pass.
+- Do not include the whole backlog in `userStories`.
+- Put the whole desired outcome in `finalSuccessCriteria`.
+- Acceptance criteria must be concrete and verifiable.
+- Every story must include a quality check such as `Typecheck passes`.
+- UI stories should include `Verify in browser using dev-browser skill` when browser tooling is available.
 
-Ralph spawns a fresh Amp instance per iteration with no memory of previous work. If a story is too big, the LLM runs out of context before finishing and produces broken code.
+Right-sized first slices:
 
-### Right-sized stories:
-- Add a database column and migration
-- Add a UI component to an existing page
-- Update a server action with new logic
-- Add a filter dropdown to a list
+- Add a database column and migration.
+- Add the first service function behind a feature.
+- Add one UI component wired to existing data.
+- Add one API endpoint with tests.
 
-### Too big (split these):
-- "Build the entire dashboard" - Split into: schema, queries, UI components, filters
-- "Add authentication" - Split into: schema, middleware, login UI, session handling
-- "Refactor the API" - Split into one story per endpoint or pattern
+Too big for the first slice:
 
-**Rule of thumb:** If you cannot describe the change in 2-3 sentences, it is too big.
-
----
-
-## Story Ordering: Dependencies First
-
-Stories execute in priority order. Earlier stories must not depend on later ones.
-
-**Correct order:**
-1. Schema/database changes (migrations)
-2. Server actions / backend logic
-3. UI components that use the backend
-4. Dashboard/summary views that aggregate data
-
-**Wrong order:**
-1. UI component (depends on schema that does not exist yet)
-2. Schema change
+- Build an entire dashboard.
+- Add full authentication.
+- Implement every screen for a feature.
+- Refactor an entire API.
 
 ---
 
-## Acceptance Criteria: Must Be Verifiable
+## progress.txt
 
-Each criterion must be something Ralph can CHECK, not something vague.
+If `progress.txt` does not exist, create:
 
-### Good criteria (verifiable):
-- "Add `status` column to tasks table with default 'pending'"
-- "Filter dropdown has options: All, Active, Completed"
-- "Clicking delete shows confirmation dialog"
-- "Typecheck passes"
-- "Tests pass"
+```text
+# Ralph Progress Log
+Started: [current date/time]
+---
 
-### Bad criteria (vague):
-- "Works correctly"
-- "User can do X easily"
-- "Good UX"
-- "Handles edge cases"
-
-### Always include as final criterion:
-```
-"Typecheck passes"
+## Setup - Cycle 1
+- Created initial evolving prd.json
+- Final success criteria: [summary]
+- First developer objective: [summary]
+---
 ```
 
-For stories with testable logic, also include:
-```
-"Tests pass"
-```
-
-### For stories that change UI, also include:
-```
-"Verify in browser using dev-browser skill"
-```
-
-Frontend stories are NOT complete until visually verified. Ralph will use the dev-browser skill to navigate to the page, interact with the UI, and confirm changes work.
+If `progress.txt` exists, append the setup entry instead of replacing the file.
 
 ---
 
-## Conversion Rules
+## Archiving Previous Runs
 
-1. **Each user story becomes one JSON entry**
-2. **IDs**: Sequential (US-001, US-002, etc.)
-3. **Priority**: Based on dependency order, then document order
-4. **All stories**: `passes: false` and empty `notes`
-5. **branchName**: Derive from feature name, kebab-case, prefixed with `ralph/`
-6. **Always add**: "Typecheck passes" to every story's acceptance criteria
+Before writing a new `prd.json`, check if an existing one belongs to a different feature:
 
----
+1. Read the current `prd.json` if it exists.
+2. Compare its `branchName` with the new branch name.
+3. If different and `progress.txt` has content beyond the header:
+   - Create `archive/YYYY-MM-DD-feature-name/`.
+   - Copy current `prd.json` and `progress.txt` into the archive.
+   - Reset `progress.txt` for the new run.
 
-## Splitting Large PRDs
-
-If a PRD has big features, split them:
-
-**Original:**
-> "Add user notification system"
-
-**Split into:**
-1. US-001: Add notifications table to database
-2. US-002: Create notification service for sending notifications
-3. US-003: Add notification bell icon to header
-4. US-004: Create notification dropdown panel
-5. US-005: Add mark-as-read functionality
-6. US-006: Add notification preferences page
-
-Each is one focused change that can be completed and verified independently.
+The Ralph runner also archives when it detects a branch change, but the setup skill should avoid overwriting useful context.
 
 ---
 
 ## Example
 
-**Input PRD:**
-```markdown
-# Task Status Feature
+Feature request:
 
-Add ability to mark tasks with different statuses.
-
-## Requirements
-- Toggle between pending/in-progress/done on task list
-- Filter list by status
-- Show status badge on each task
-- Persist status in database
+```text
+Add task priority so users can mark tasks high, medium, or low, see priority on cards, edit priority, and filter by priority.
 ```
 
-**Output prd.json:**
+Initial `prd.json`:
+
 ```json
 {
   "project": "TaskApp",
-  "branchName": "ralph/task-status",
-  "description": "Task Status Feature - Track task progress with status indicators",
+  "branchName": "ralph/task-priority",
+  "description": "Task Priority System - first evolving PRD slice",
+  "finalSuccessCriteria": {
+    "description": "Users can assign, view, edit, and filter task priority across the app, with priority persisted between sessions.",
+    "acceptanceCriteria": [
+      "Tasks persist a priority value of high, medium, or low",
+      "Users can see priority on task cards without opening details",
+      "Users can edit priority from the task edit flow",
+      "Users can filter the task list by priority",
+      "Typecheck passes",
+      "Relevant UI flows are verified in browser"
+    ],
+    "passes": false,
+    "notes": ""
+  },
+  "planning": {
+    "cycle": 1,
+    "currentObjective": "Add the persisted priority field so later slices can build UI on top of it"
+  },
+  "prdChain": [
+    {
+      "cycle": 1,
+      "objective": "Persist task priority in the data model",
+      "status": "active",
+      "storyIds": ["US-001"],
+      "notes": ""
+    }
+  ],
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add status field to tasks table",
-      "description": "As a developer, I need to store task status in the database.",
+      "title": "Add priority field to database",
+      "description": "As a developer, I need to store task priority so it persists across sessions.",
       "acceptanceCriteria": [
-        "Add status column: 'pending' | 'in_progress' | 'done' (default 'pending')",
+        "Add priority column to tasks table: high, medium, or low",
+        "Default existing and new tasks to medium priority",
         "Generate and run migration successfully",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "Display status badge on task cards",
-      "description": "As a user, I want to see task status at a glance.",
-      "acceptanceCriteria": [
-        "Each task card shows colored status badge",
-        "Badge colors: gray=pending, blue=in_progress, green=done",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 2,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "Add status toggle to task list rows",
-      "description": "As a user, I want to change task status directly from the list.",
-      "acceptanceCriteria": [
-        "Each row has status dropdown or toggle",
-        "Changing status saves immediately",
-        "UI updates without page refresh",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 3,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-004",
-      "title": "Filter tasks by status",
-      "description": "As a user, I want to filter the list to see only certain statuses.",
-      "acceptanceCriteria": [
-        "Filter dropdown: All | Pending | In Progress | Done",
-        "Filter persists in URL params",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 4,
       "passes": false,
       "notes": ""
     }
@@ -230,29 +235,17 @@ Add ability to mark tasks with different statuses.
 
 ---
 
-## Archiving Previous Runs
+## Checklist
 
-**Before writing a new prd.json, check if there is an existing one from a different feature:**
+Before finishing:
 
-1. Read the current `prd.json` if it exists
-2. Check if `branchName` differs from the new feature's branch name
-3. If different AND `progress.txt` has content beyond the header:
-   - Create archive folder: `archive/YYYY-MM-DD-feature-name/`
-   - Copy current `prd.json` and `progress.txt` to archive
-   - Reset `progress.txt` with fresh header
-
-**The ralph.sh script handles this automatically** when you run it, but if you are manually updating prd.json between runs, archive first.
-
----
-
-## Checklist Before Saving
-
-Before writing prd.json, verify:
-
-- [ ] **Previous run archived** (if prd.json exists with different branchName, archive it first)
-- [ ] Each story is completable in one iteration (small enough)
-- [ ] Stories are ordered by dependency (schema to backend to UI)
-- [ ] Every story has "Typecheck passes" as criterion
-- [ ] UI stories have "Verify in browser using dev-browser skill" as criterion
-- [ ] Acceptance criteria are verifiable (not vague)
-- [ ] No story depends on a later story
+- [ ] `prd.json` is valid JSON.
+- [ ] `finalSuccessCriteria` describes the whole target outcome.
+- [ ] `finalSuccessCriteria.passes` is `false`.
+- [ ] `planning.cycle` is `1`.
+- [ ] `prdChain` has one active cycle 1 entry.
+- [ ] `userStories` contains only the first small slice.
+- [ ] Every story has `passes: false`.
+- [ ] Every story has verifiable acceptance criteria.
+- [ ] `progress.txt` exists and records the setup.
+- [ ] No implementation work was started.
