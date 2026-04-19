@@ -5,8 +5,14 @@ CLI tool for [Ralph](https://github.com/snarktank/ralph) — an autonomous AI ag
 ## Install
 
 ```bash
-npm install -g ralph-cli
+git clone https://github.com/samchung95/ralph-cli.git
+cd ralph-cli/cli
+npm install
+npm run build
+npm install -g .
 ```
+
+The `ralph-cli` package name on npm is currently a placeholder and does not expose the `ralph` command. Until this CLI is published, install from the local package.
 
 ## Quick Start
 

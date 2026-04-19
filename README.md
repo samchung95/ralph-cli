@@ -22,11 +22,17 @@ Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 
 ### Recommended: Node CLI
 
-Install Ralph globally:
+Install Ralph globally from this repo:
 
 ```bash
-npm install -g ralph-cli
+git clone https://github.com/samchung95/ralph-cli.git
+cd ralph-cli/cli
+npm install
+npm run build
+npm install -g .
 ```
+
+The `ralph-cli` package name on npm is currently a placeholder and does not expose the `ralph` command. Until this CLI is published, install from the local `cli` package.
 
 Initialize Ralph in your project:
 
