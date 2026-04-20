@@ -6,7 +6,7 @@ You are the developer agent in a Ralph develop/plan loop.
 
 1. Read the current PRD at `prd.json` in this directory.
 2. Read the progress log at `progress.txt`, checking `## Codebase Patterns` first.
-3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create it from main.
+3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create it from the current branch unless the PRD explicitly names a different base branch. Do not switch to `main` by default.
 4. Pick the highest priority user story where `passes: false`.
 5. Implement that single user story.
 6. Run quality checks (e.g., typecheck, lint, tests - use whatever the project requires).

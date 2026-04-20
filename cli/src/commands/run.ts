@@ -103,14 +103,19 @@ export async function runCommand(
   const prdPath = join(dir, "prd.json");
   const progressPath = join(dir, "progress.txt");
   const lastBranchPath = join(dir, ".last-branch");
+  const phasePrompts = {} as Record<Phase, string>;
 
-  for (const promptFile of Object.values(PHASE_PROMPTS)) {
+  for (const [phase, promptFile] of Object.entries(PHASE_PROMPTS) as [
+    Phase,
+    string
+  ][]) {
     const promptPath = join(dir, promptFile);
     if (!(await fileExists(promptPath))) {
       log.error(`${promptFile} not found in ${dir}`);
       log.info('Run "ralph init" first to set up the project.');
       process.exit(1);
     }
+    phasePrompts[phase] = await readText(promptPath);
   }
 
   if (!(await fileExists(prdPath))) {
@@ -196,6 +201,7 @@ export async function runCommand(
       tool,
       dir,
       "developer",
+      phasePrompts.developer,
       dangerouslySkipPermissions,
       bypass,
       copilotAutoApprove
@@ -215,6 +221,7 @@ export async function runCommand(
       tool,
       dir,
       "planner",
+      phasePrompts.planner,
       dangerouslySkipPermissions,
       bypass,
       copilotAutoApprove
@@ -252,14 +259,13 @@ async function runPhase(
   tool: Tool,
   dir: string,
   phase: Phase,
+  prompt: string,
   dangerouslySkipPermissions: boolean,
   bypass: boolean,
   copilotAutoApprove: boolean
 ): Promise<string> {
   const toolConfig = TOOL_CONFIG[tool];
-  const phasePromptPath = join(dir, PHASE_PROMPTS[phase]);
   const runtimePromptPath = join(dir, toolConfig.runtimePromptFile);
-  const prompt = await readText(phasePromptPath);
 
   await writeText(runtimePromptPath, prompt);
   log.info(`Loaded ${PHASE_PROMPTS[phase]} into ${toolConfig.runtimePromptFile}`);
