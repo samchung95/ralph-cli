@@ -68,8 +68,8 @@
         "Committed with message: docs: fix stale flowchart URL"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "README.md flowchart image and 'View Interactive Flowchart' links updated to samchung95.github.io/ralph-cli; marketplace identifier snarktank/ralph left unchanged."
     }
   ]
 }
