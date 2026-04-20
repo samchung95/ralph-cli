@@ -1,0 +1,38 @@
+# Ralph Progress Log
+Started: Mon Apr 20 2026
+
+## Setup - Cycle 1
+- Created initial evolving prd.json for documentation cleanup and GitHub Actions CI.
+- Final success criteria: clearer install/run/setup documentation and GitHub Actions verification for available test/build commands.
+- First developer objective: exploration only, so Ralph proves the develop/planner alternation before changing docs or CI.
+---
+
+## Codebase Patterns
+
+- CLI package lives in `cli/` — TypeScript, built with tsup. Verification commands: `npm run build` and `npm run typecheck` (tsc --noEmit). No unit test runner configured.
+- Flowchart package lives in `flowchart/` — Vite + React. Has `lint` (eslint) and `build` (tsc -b + vite build).
+- Existing CI: `.github/workflows/deploy.yml` deploys the flowchart to GitHub Pages on push to main. No CLI verification workflow exists yet.
+- Root README.md and cli/README.md are both current and accurate. Main note: npm package `ralph-cli` is a placeholder; install from local `cli/`.
+
+---
+
+## 2026-04-20T12:30 - Developer - US-001
+- Exploration of repository docs and verification commands (no code edits per story scope).
+- Files reviewed:
+  - README.md (root) — comprehensive, up-to-date; minor: npm placeholder note is accurate
+  - cli/README.md — accurate; covers all commands
+  - cli/package.json — scripts: build (tsup), dev, typecheck; no test script
+  - flowchart/package.json — scripts: dev, build, lint, preview; no test script
+  - .github/workflows/deploy.yml — deploys flowchart to Pages; no CLI CI workflow
+- Checks run: N/A (exploration only)
+- Commit: none (exploration; no code changed)
+- Recommended next PRD slice:
+  1. DOCS-CLEANUP: Root README and cli/README are largely clean. One doc update: the README references `snarktank/ralph` for Claude Code Marketplace; repo is actually `samchung95/ralph-cli` — verify and fix.
+  2. CI: Add `.github/workflows/ci.yml` running on push/PR to all branches:
+     - `cd cli && npm ci && npm run typecheck && npm run build`
+     - Optionally: `cd flowchart && npm ci && npm run build && npm run lint`
+  3. No true unit tests exist; strongest checks are typecheck + build. Document this in CI workflow comments.
+- Learnings:
+  - No unit tests in either package — next slice must add CI using typecheck/build as the verification steps.
+  - `.github/workflows/` already exists with deploy.yml, so adding ci.yml is straightforward.
+---
