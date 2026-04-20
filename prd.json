@@ -1,7 +1,7 @@
 {
   "project": "Ralph CLI",
   "branchName": "ralph/docs-ci-tests-cli",
-  "description": "Documentation cleanup and GitHub Actions test CI - first evolving PRD slice",
+  "description": "Add GitHub Actions CI workflow and fix stale snarktank flowchart URL in README",
   "finalSuccessCriteria": {
     "description": "Ralph CLI documentation is clearer for install/run/setup, and the repository has GitHub Actions CI that runs the available test or verification commands for the CLI and related packages.",
     "acceptanceCriteria": [
@@ -16,36 +16,60 @@
     "notes": ""
   },
   "planning": {
-    "cycle": 1,
-    "currentObjective": "Explore the repository's documentation, package layout, and available verification commands before changing docs or CI"
+    "cycle": 2,
+    "currentObjective": "Add GitHub Actions CI workflow for CLI typecheck + build, and fix stale snarktank.github.io flowchart URL in README"
   },
   "prdChain": [
     {
       "cycle": 1,
       "objective": "Explore current docs and test/build commands, then record a plan for docs cleanup and GitHub Actions CI",
-      "status": "active",
+      "status": "complete",
       "storyIds": [
         "US-001"
+      ],
+      "notes": "Exploration complete; developer recorded findings and next slice recommendations in progress.txt."
+    },
+    {
+      "cycle": 2,
+      "objective": "Add GitHub Actions CI workflow for CLI typecheck + build, and fix stale snarktank flowchart URL in README",
+      "status": "active",
+      "storyIds": [
+        "US-002",
+        "US-003"
       ],
       "notes": ""
     }
   ],
   "userStories": [
     {
-      "id": "US-001",
-      "title": "Explore docs and verification commands",
-      "description": "As a maintainer, I want Ralph to inspect the repository documentation and available package checks before planning edits so that the next PRD slice is grounded in the actual repo.",
+      "id": "US-002",
+      "title": "Add GitHub Actions CI workflow",
+      "description": "As a maintainer, I want a GitHub Actions CI workflow that runs the CLI package's strongest available verification commands (typecheck and build) on every push and pull request so that regressions are caught automatically.",
       "acceptanceCriteria": [
-        "Review README.md and cli/README.md for stale or confusing install, setup, skill, and run instructions",
-        "Inspect package.json files to identify available verification commands for the CLI and flowchart packages",
-        "Inspect whether .github/workflows already exists and note any existing CI patterns",
-        "Append an exploration summary to progress.txt with recommended next slice for documentation cleanup and GitHub Actions CI",
-        "Do not edit documentation or add CI in this exploration story",
-        "Mark US-001 as passing only after the exploration summary is recorded"
+        "File .github/workflows/ci.yml is created",
+        "Workflow triggers on push and pull_request to all branches",
+        "Workflow job runs: cd cli && npm ci && npm run typecheck && npm run build",
+        "Workflow comments note that no unit tests exist yet; typecheck and build are the strongest checks available",
+        "npm run typecheck and npm run build both pass locally before committing",
+        "Committed with message: feat: add GitHub Actions CI workflow"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Exploration complete. See progress.txt for findings and next slice recommendations."
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Fix stale snarktank.github.io flowchart URL in README",
+      "description": "As a user reading the README, I want the flowchart link to point to the current GitHub Pages deployment so that clicking the link works.",
+      "acceptanceCriteria": [
+        "README.md flowchart image link and 'View Interactive Flowchart' text link are updated from snarktank.github.io/ralph to samchung95.github.io/ralph-cli",
+        "The Claude Code marketplace plugin identifier (snarktank/ralph on line ~131) is left unchanged as it is the correct marketplace identifier",
+        "No other unintentional snarktank references remain in README.md",
+        "Committed with message: docs: fix stale flowchart URL"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

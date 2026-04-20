@@ -36,3 +36,14 @@ Started: Mon Apr 20 2026
   - No unit tests in either package — next slice must add CI using typecheck/build as the verification steps.
   - `.github/workflows/` already exists with deploy.yml, so adding ci.yml is straightforward.
 ---
+
+## 2026-04-20T12:31 - Planner - Cycle 1
+- Current PRD status: US-001 passes (exploration complete, findings recorded in progress.txt).
+- Final success criteria status: NOT MET — no CI workflow exists; stale snarktank.github.io flowchart URL still in README.
+- Evidence reviewed: git log shows commit `7223621 feat: US-001 - Explore docs and verification commands`; only `.github/workflows/deploy.yml` exists (no CI); README.md lines 245/247 reference snarktank.github.io/ralph.
+- Cycle 1 prdChain marked complete.
+- Next PRD slice (cycle 2) planned with two tightly coupled small stories:
+  - US-002: Add .github/workflows/ci.yml — triggers on push/PR, runs CLI typecheck + build.
+  - US-003: Fix stale snarktank.github.io/ralph → samchung95.github.io/ralph-cli in README flowchart links.
+- Files changed: prd.json, progress.txt
+---
