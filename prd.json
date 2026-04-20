@@ -12,8 +12,8 @@
       "If no true unit tests exist yet, the workflow documents and runs the strongest available checks such as typecheck and build",
       "All configured local verification commands pass"
     ],
-    "passes": false,
-    "notes": ""
+    "passes": true,
+    "notes": "CI workflow .github/workflows/ci.yml added (b5b808d) — runs npm ci, typecheck, and build on every push/PR. README.md stale snarktank.github.io flowchart links fixed to samchung95.github.io/ralph-cli (1acb103). All acceptance criteria verified."
   },
   "planning": {
     "cycle": 2,
@@ -32,12 +32,12 @@
     {
       "cycle": 2,
       "objective": "Add GitHub Actions CI workflow for CLI typecheck + build, and fix stale snarktank flowchart URL in README",
-      "status": "active",
+      "status": "complete",
       "storyIds": [
         "US-002",
         "US-003"
       ],
-      "notes": ""
+      "notes": "Both stories completed. CI workflow added; stale flowchart URL fixed."
     }
   ],
   "userStories": [
