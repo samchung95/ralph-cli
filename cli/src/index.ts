@@ -5,6 +5,7 @@ import { initCommand } from "./commands/init.js";
 import { installCommand } from "./commands/install.js";
 import { runCommand } from "./commands/run.js";
 import { bypassCommand } from "./commands/bypass.js";
+import { autoApproveCommand } from "./commands/auto-approve.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -50,6 +51,12 @@ program
   .action(bypassCommand);
 
 program
+  .command("auto-approve")
+  .description("Show or set remembered auto-approval for Copilot prompts")
+  .argument("[value]", "on, off, or status", "status")
+  .action(autoApproveCommand);
+
+program
   .command("run")
   .description("Run the Ralph develop/plan agent loop")
   .argument("[cycles]", "Maximum number of develop/plan cycles", "10")
@@ -71,6 +78,16 @@ program
   .option(
     "--no-bypass",
     "Disable bypass mode for this run",
+    undefined
+  )
+  .option(
+    "--auto-approve",
+    "Auto-approve Copilot prompts for this run",
+    undefined
+  )
+  .option(
+    "--no-auto-approve",
+    "Disable Copilot auto-approval for this run",
     undefined
   )
   .option("-d, --dir <path>", "Project directory containing DEVELOPER.md, PLANNER.md, and prd.json", process.cwd())

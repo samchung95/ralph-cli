@@ -30,6 +30,9 @@ ralph install --tool codex
 # Optional: remember full-access mode for Codex
 ralph bypass on
 
+# Optional: remember auto-approval for Copilot prompts
+ralph auto-approve on
+
 # 3. Ask your AI tool to set up the first evolving prd.json
 # "Use the /ralph skill to set up Ralph for [feature]"
 
@@ -38,6 +41,7 @@ ralph run                  # Claude Code, 10 cycles
 ralph run 20               # Claude Code, 20 cycles
 ralph run --tool amp
 ralph run --tool copilot
+ralph run --tool copilot --auto-approve
 ralph run --tool codex
 ralph run --tool codex --bypass
 ```
@@ -83,6 +87,18 @@ ralph bypass off
 
 When bypass is on, Codex runs use `--dangerously-bypass-approvals-and-sandbox` for full access. When bypass is off, Codex uses sandboxed `--full-auto`.
 
+### `ralph auto-approve [on|off|status]`
+
+Shows or changes remembered auto-approval for Copilot prompts.
+
+```bash
+ralph auto-approve status
+ralph auto-approve on
+ralph auto-approve off
+```
+
+Copilot already runs with `--allow-all`, `--autopilot`, and `--no-ask-user`. If Copilot still shows an approval prompt, auto-approve watches its output and answers automatically.
+
 ### `ralph run [cycles]`
 
 Runs the Ralph autonomous agent loop — a TypeScript port of `ralph.sh`. Each cycle runs a developer phase from `DEVELOPER.md`, then a planner phase from `PLANNER.md`. Ralph writes the active phase prompt into the selected tool's runtime prompt file before spawning the tool.
@@ -92,6 +108,8 @@ ralph run                         # Claude Code, 10 cycles
 ralph run 20                      # Claude Code, 20 cycles
 ralph run --tool amp              # Amp
 ralph run --tool copilot          # GitHub Copilot CLI
+ralph run --tool copilot --auto-approve
+ralph run --tool copilot --no-auto-approve
 ralph run --tool codex            # ChatGPT Codex
 ralph run --tool codex --bypass   # Codex full access for this run
 ralph run --tool codex --no-bypass
@@ -102,6 +120,7 @@ Options:
 - `--tool <tool>` — AI tool to use: `claude`, `amp`, `copilot`, or `codex` (default: `claude`)
 - `--dangerously-skip-permissions` — Pass `--dangerously-skip-permissions` to Claude Code
 - `--bypass` / `--no-bypass` — Override the remembered bypass setting for this run
+- `--auto-approve` / `--no-auto-approve` — Override remembered Copilot auto-approval for this run
 - `-d, --dir <path>` — Project directory containing `DEVELOPER.md`, `PLANNER.md`, and `prd.json` (default: cwd)
 
 ## What Happens During `ralph run`

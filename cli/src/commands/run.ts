@@ -41,7 +41,13 @@ const TOOL_CONFIG: Record<Tool, ToolConfig> = {
   copilot: {
     binary: "copilot",
     runtimePromptFile: "AGENTS.md",
-    args: () => ["--allow-all", "--autopilot", "--no-ask-user"],
+    args: () => [
+      "--allow-all",
+      "--autopilot",
+      "--no-ask-user",
+      "--prompt",
+      "Read AGENTS.md in the current directory and execute its Ralph phase instructions.",
+    ],
   },
   codex: {
     binary: "codex",
@@ -70,6 +76,8 @@ export async function runCommand(
   const dangerouslySkipPermissions = options.dangerouslySkipPermissions;
   const config = await readConfig();
   const bypass = options.bypass ?? config.bypass;
+  const copilotAutoApprove =
+    options.autoApprove ?? config.copilotAutoApprove;
 
   if (!tool) {
     log.error(`Invalid tool '${options.tool}'. Must be one of: ${TOOL_NAMES}.`);
@@ -173,6 +181,13 @@ export async function runCommand(
       log.info(`Bypass is on, but it only changes Codex runs. Current tool: ${tool}`);
     }
   }
+  if (copilotAutoApprove) {
+    if (tool === "copilot") {
+      log.warn("Copilot auto-approve is on: approval prompts will be answered automatically.");
+    } else {
+      log.info(`Copilot auto-approve is on, but current tool is ${tool}.`);
+    }
+  }
 
   for (let i = 1; i <= maxCycles; i++) {
     log.iteration(i, maxCycles, `${tool} developer`);
@@ -182,7 +197,8 @@ export async function runCommand(
       dir,
       "developer",
       dangerouslySkipPermissions,
-      bypass
+      bypass,
+      copilotAutoApprove
     );
 
     if (developResult.includes(COMPLETION_SIGNAL)) {
@@ -200,7 +216,8 @@ export async function runCommand(
       dir,
       "planner",
       dangerouslySkipPermissions,
-      bypass
+      bypass,
+      copilotAutoApprove
     );
 
     if (planResult.includes(COMPLETION_SIGNAL)) {
@@ -236,7 +253,8 @@ async function runPhase(
   dir: string,
   phase: Phase,
   dangerouslySkipPermissions: boolean,
-  bypass: boolean
+  bypass: boolean,
+  copilotAutoApprove: boolean
 ): Promise<string> {
   const toolConfig = TOOL_CONFIG[tool];
   const phasePromptPath = join(dir, PHASE_PROMPTS[phase]);
@@ -251,7 +269,14 @@ async function runPhase(
     toolConfig.args(dangerouslySkipPermissions, bypass),
     {
       cwd: dir,
-      stdin: prompt,
+      stdin: tool === "copilot" ? undefined : prompt,
+      autoApprove:
+        tool === "copilot"
+          ? {
+              enabled: copilotAutoApprove,
+              label: "Copilot",
+            }
+          : undefined,
     }
   );
 

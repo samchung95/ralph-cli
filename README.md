@@ -74,6 +74,16 @@ ralph bypass off
 
 When bypass is on, `ralph run --tool codex` uses Codex's `--dangerously-bypass-approvals-and-sandbox` mode. Leave bypass off for sandboxed `--full-auto` runs.
 
+Copilot can optionally auto-approve prompts that still appear despite `--allow-all`:
+
+```bash
+ralph auto-approve status
+ralph auto-approve on
+ralph auto-approve off
+```
+
+When Copilot auto-approve is on, Ralph watches Copilot output for approval prompts and answers them automatically.
+
 ### Manual Script Mode
 
 You can also copy the shell runner into a project:
@@ -171,6 +181,9 @@ ralph run --tool amp
 
 # GitHub Copilot CLI
 ralph run --tool copilot
+
+# GitHub Copilot CLI with auto-approval for this run only
+ralph run --tool copilot --auto-approve
 
 # ChatGPT Codex
 ralph run --tool codex

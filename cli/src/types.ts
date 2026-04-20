@@ -21,6 +21,7 @@ export interface RunOptions {
   tool: string;
   dangerouslySkipPermissions: boolean;
   bypass?: boolean;
+  autoApprove?: boolean;
   dir: string;
 }
 

@@ -4,10 +4,12 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 
 export interface RalphConfig {
   bypass: boolean;
+  copilotAutoApprove: boolean;
 }
 
 const DEFAULT_CONFIG: RalphConfig = {
   bypass: false,
+  copilotAutoApprove: false,
 };
 
 export function getConfigPath(): string {
@@ -21,6 +23,7 @@ export async function readConfig(): Promise<RalphConfig> {
       ...DEFAULT_CONFIG,
       ...config,
       bypass: Boolean(config.bypass),
+      copilotAutoApprove: Boolean(config.copilotAutoApprove),
     };
   } catch {
     return DEFAULT_CONFIG;
