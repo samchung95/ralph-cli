@@ -46,7 +46,7 @@ const TOOL_CONFIG: Record<Tool, ToolConfig> = {
       "--autopilot",
       "--no-ask-user",
       "--prompt",
-      "Read AGENTS.md in the current directory and execute its Ralph phase instructions.",
+      "Read_AGENTS.md_and_execute_the_Ralph_phase_instructions.",
     ],
   },
   codex: {
