@@ -12,6 +12,8 @@ export interface AutoApproveOptions {
   inputs?: string[];
 }
 
+const DEFAULT_APPROVAL_INPUTS = ["y\n", "yes\n", "\n"];
+
 const APPROVAL_PATTERNS = [
   /do you want to/i,
   /(allow|approve|confirm|continue|proceed|execute|run)[\s\S]{0,140}\?/i,
@@ -59,7 +61,7 @@ export function exec(
       if (now - lastApprovalAt < 1000) return;
       lastApprovalAt = now;
 
-      for (const input of autoApprove.inputs ?? ["y\n"]) {
+      for (const input of autoApprove.inputs ?? DEFAULT_APPROVAL_INPUTS) {
         child.stdin.write(input);
       }
 
