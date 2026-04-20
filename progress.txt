@@ -37,7 +37,16 @@ Started: Mon Apr 20 2026
   - `.github/workflows/` already exists with deploy.yml, so adding ci.yml is straightforward.
 ---
 
-## 2026-04-20T12:31 - Planner - Cycle 1
+## 2026-04-20T12:33 - Developer - US-002
+- Created `.github/workflows/ci.yml` — triggers on push/PR to all branches, runs: `cd cli && npm ci && npm run typecheck && npm run build`.
+- Workflow includes comments noting no unit tests exist yet; typecheck + build are the strongest available checks.
+- Files changed: `.github/workflows/ci.yml`
+- Checks run: `npm run typecheck` ✅, `npm run build` ✅ (both pass locally)
+- Commit: `b5b808d feat: add GitHub Actions CI workflow`
+- Learnings for future iterations:
+  - `actions/setup-node@v4` with `cache: "npm"` and `cache-dependency-path: cli/package-lock.json` is the right pattern for a subdirectory package.
+---
+
 - Current PRD status: US-001 passes (exploration complete, findings recorded in progress.txt).
 - Final success criteria status: NOT MET — no CI workflow exists; stale snarktank.github.io flowchart URL still in README.
 - Evidence reviewed: git log shows commit `7223621 feat: US-001 - Explore docs and verification commands`; only `.github/workflows/deploy.yml` exists (no CI); README.md lines 245/247 reference snarktank.github.io/ralph.

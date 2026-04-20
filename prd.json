@@ -54,7 +54,7 @@
         "Committed with message: feat: add GitHub Actions CI workflow"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
