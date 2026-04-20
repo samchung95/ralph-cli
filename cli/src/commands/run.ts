@@ -2,6 +2,7 @@ import { resolve, join } from "path";
 import { log } from "../utils/log.js";
 import { fileExists, readText, writeText, copyFileSafe } from "../utils/files.js";
 import { exec, commandExists } from "../utils/exec.js";
+import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
 import type { RunOptions, Tool } from "../types.js";
 
@@ -16,7 +17,7 @@ const PHASE_PROMPTS: Record<Phase, string> = {
 interface ToolConfig {
   binary: string;
   runtimePromptFile: string;
-  args: (dangerouslySkipPermissions: boolean) => string[];
+  args: (dangerouslySkipPermissions: boolean, bypass: boolean) => string[];
 }
 
 const TOOL_CONFIG: Record<Tool, ToolConfig> = {
@@ -45,7 +46,10 @@ const TOOL_CONFIG: Record<Tool, ToolConfig> = {
   codex: {
     binary: "codex",
     runtimePromptFile: "AGENTS.md",
-    args: () => ["exec", "--full-auto", "-"],
+    args: (_dangerouslySkipPermissions, bypass) =>
+      bypass
+        ? ["exec", "--dangerously-bypass-approvals-and-sandbox", "-"]
+        : ["exec", "--full-auto", "-"],
   },
 };
 
@@ -64,6 +68,8 @@ export async function runCommand(
   const tool = normalizeTool(options.tool);
   const dir = resolve(options.dir);
   const dangerouslySkipPermissions = options.dangerouslySkipPermissions;
+  const config = await readConfig();
+  const bypass = options.bypass ?? config.bypass;
 
   if (!tool) {
     log.error(`Invalid tool '${options.tool}'. Must be one of: ${TOOL_NAMES}.`);
@@ -160,6 +166,13 @@ export async function runCommand(
 
   // ── Run the loop ──────────────────────────────────────────────────────
   log.header(`Starting Ralph — Tool: ${tool} — Max cycles: ${maxCycles}`);
+  if (bypass) {
+    if (tool === "codex") {
+      log.warn("Bypass is on: Codex will run with full access and no approvals.");
+    } else {
+      log.info(`Bypass is on, but it only changes Codex runs. Current tool: ${tool}`);
+    }
+  }
 
   for (let i = 1; i <= maxCycles; i++) {
     log.iteration(i, maxCycles, `${tool} developer`);
@@ -168,14 +181,14 @@ export async function runCommand(
       tool,
       dir,
       "developer",
-      dangerouslySkipPermissions
+      dangerouslySkipPermissions,
+      bypass
     );
 
     if (developResult.includes(COMPLETION_SIGNAL)) {
-      console.log("");
-      log.success("Ralph completed the final success criteria!");
-      log.info(`Completed during developer phase of cycle ${i} of ${maxCycles}`);
-      process.exit(0);
+      log.warn(
+        "Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
+      );
     }
 
     log.info(`Developer phase ${i} complete. Planning next...`);
@@ -186,7 +199,8 @@ export async function runCommand(
       tool,
       dir,
       "planner",
-      dangerouslySkipPermissions
+      dangerouslySkipPermissions,
+      bypass
     );
 
     if (planResult.includes(COMPLETION_SIGNAL)) {
@@ -221,7 +235,8 @@ async function runPhase(
   tool: Tool,
   dir: string,
   phase: Phase,
-  dangerouslySkipPermissions: boolean
+  dangerouslySkipPermissions: boolean,
+  bypass: boolean
 ): Promise<string> {
   const toolConfig = TOOL_CONFIG[tool];
   const phasePromptPath = join(dir, PHASE_PROMPTS[phase]);
@@ -233,7 +248,7 @@ async function runPhase(
 
   const result = await exec(
     toolConfig.binary,
-    toolConfig.args(dangerouslySkipPermissions),
+    toolConfig.args(dangerouslySkipPermissions, bypass),
     {
       cwd: dir,
       stdin: prompt,

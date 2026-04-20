@@ -20,6 +20,7 @@ export function normalizeTool(tool: string): Tool | undefined {
 export interface RunOptions {
   tool: string;
   dangerouslySkipPermissions: boolean;
+  bypass?: boolean;
   dir: string;
 }
 

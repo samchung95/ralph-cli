@@ -64,6 +64,16 @@ ralph install --tool copilot
 ralph install --tool codex
 ```
 
+Codex can optionally run with full access. This setting is remembered:
+
+```bash
+ralph bypass status
+ralph bypass on
+ralph bypass off
+```
+
+When bypass is on, `ralph run --tool codex` uses Codex's `--dangerously-bypass-approvals-and-sandbox` mode. Leave bypass off for sandboxed `--full-auto` runs.
+
 ### Manual Script Mode
 
 You can also copy the shell runner into a project:
@@ -164,6 +174,9 @@ ralph run --tool copilot
 
 # ChatGPT Codex
 ralph run --tool codex
+
+# ChatGPT Codex with full access for this run only
+ralph run --tool codex --bypass
 
 # Fully autonomous Claude Code mode
 ralph run --dangerously-skip-permissions 15

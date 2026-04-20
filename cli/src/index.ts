@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { installCommand } from "./commands/install.js";
 import { runCommand } from "./commands/run.js";
+import { bypassCommand } from "./commands/bypass.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -43,6 +44,12 @@ program
   .action(installCommand);
 
 program
+  .command("bypass")
+  .description("Show or set the remembered bypass mode for Codex runs")
+  .argument("[value]", "on, off, or status", "status")
+  .action(bypassCommand);
+
+program
   .command("run")
   .description("Run the Ralph develop/plan agent loop")
   .argument("[cycles]", "Maximum number of develop/plan cycles", "10")
@@ -55,6 +62,16 @@ program
     "--dangerously-skip-permissions",
     "Pass --dangerously-skip-permissions to Claude Code",
     false
+  )
+  .option(
+    "--bypass",
+    "Use bypass mode for this run (Codex uses full access)",
+    undefined
+  )
+  .option(
+    "--no-bypass",
+    "Disable bypass mode for this run",
+    undefined
   )
   .option("-d, --dir <path>", "Project directory containing DEVELOPER.md, PLANNER.md, and prd.json", process.cwd())
   .action(runCommand);

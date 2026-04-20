@@ -147,12 +147,8 @@ for i in $(seq 1 $MAX_CYCLES); do
 
   OUTPUT=$(run_phase developer) || true
   
-  # Check for completion signal
   if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
-    echo ""
-    echo "Ralph completed the final success criteria!"
-    echo "Completed during developer phase of cycle $i of $MAX_CYCLES"
-    exit 0
+    echo "Warning: Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
   fi
 
   echo "Developer phase $i complete. Planning next..."
