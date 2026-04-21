@@ -47,8 +47,8 @@
       ],
       "priority": 1,
       "storyPriority": "high",
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "validate command now prints [HIGH]/[MEDIUM]/[LOW] beside each story id and title"
     }
   ]
 }
