@@ -1,56 +1,56 @@
 {
   "project": "Ralph CLI",
-  "branchName": "ralph/prd-doctor-fix",
-  "description": "PRD Doctor Fix - first evolving PRD slice",
+  "branchName": "ralph/transient-runtime-prompts",
+  "description": "Transient Runtime Prompts - first evolving PRD slice",
   "finalSuccessCriteria": {
-    "description": "Ralph can repair an invalid prd.json in one doctor pass by detecting the current validation issue, injecting that issue into a DOCTOR.md prompt, running the selected AI tool once, and revalidating the file afterward.",
+    "description": "Ralph no longer requires DEVELOPER.md, PLANNER.md, or DOCTOR.md to be initialized into each target repository; run and fix flows load prompt templates from the installed Ralph dependency, write only the tool-specific runtime prompt needed for the active phase, and clean up or restore that runtime file when the command finishes.",
     "acceptanceCriteria": [
-      "A DOCTOR.md prompt exists at the project root and in CLI templates alongside DEVELOPER.md and PLANNER.md",
-      "The CLI exposes a fix/doctor flow that detects current prd.json validation errors before invoking the AI tool",
-      "The doctor prompt sent to the AI tool includes the exact detected validation issue(s) in a clearly labeled section",
-      "The fix flow runs a single doctor pass, then revalidates prd.json and reports success only when validation passes",
-      "If prd.json is already valid, the fix flow exits cleanly without invoking a doctor pass",
-      "ralph init installs DOCTOR.md for new projects",
+      "ralph init no longer copies DEVELOPER.md, PLANNER.md, or DOCTOR.md into the target project",
+      "ralph run loads DEVELOPER.md and PLANNER.md from the Ralph package templates instead of requiring those files in the target project",
+      "ralph fix loads DOCTOR.md from the Ralph package templates instead of requiring that file in the target project",
+      "The active validation issue(s) are still injected into the doctor prompt before the single fix pass runs",
+      "Generated runtime prompt files such as prompt.md, CLAUDE.md, and AGENTS.md are removed after run/fix when Ralph created them",
+      "If a runtime prompt file already existed before run/fix, Ralph restores its previous contents instead of deleting or overwriting it permanently",
+      "Errors during an AI phase still trigger cleanup or restoration before the command exits",
+      "Documentation and CLI help no longer tell users to keep phase prompt files in their project root",
       "Typecheck passes",
-      "A manual CLI verification demonstrates repairing a deliberately broken prd.json in one doctor pass"
+      "Manual CLI verification demonstrates init omits phase prompt files and run/fix create then clean up or restore runtime prompt files"
     ],
-    "passes": true,
-    "notes": "Verified cycle 1: DOCTOR.md exists at root and cli/templates/. `ralph fix` command validates prd.json, injects errors under '## Current prd.json Validation Errors', invokes AI once, and revalidates. No-op path confirmed. ralph init copies DOCTOR.md. Typecheck exits 0. Manual CLI verification confirmed repair of broken prd.json in one pass."
+    "passes": false,
+    "notes": ""
   },
   "planning": {
     "cycle": 1,
-    "currentObjective": "Add the single-pass PRD doctor prompt and CLI fix path that injects current validation errors"
+    "currentObjective": "Stop installing phase prompt files and make run/fix use dependency templates with runtime prompt cleanup"
   },
   "prdChain": [
     {
       "cycle": 1,
-      "objective": "Implement a one-pass PRD doctor fix flow",
-      "status": "complete",
-      "storyIds": [
-        "US-001"
-      ],
+      "objective": "Implement dependency-sourced transient runtime prompts",
+      "status": "active",
+      "storyIds": ["US-001"],
       "notes": ""
     }
   ],
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add single-pass PRD doctor fix flow",
-      "description": "As a Ralph user, I want Ralph to detect prd.json validation issues and run a DOCTOR.md-powered fix pass with the current issue injected, so broken PRD metadata can be repaired without entering the develop/plan loop.",
+      "title": "Use transient runtime prompts from package templates",
+      "description": "As a Ralph user, I want init to keep my repository free of Ralph phase prompt files while run and fix temporarily materialize only the prompt file required by the selected AI tool, so Ralph can operate from its dependency templates without leaving generated prompt files behind.",
       "acceptanceCriteria": [
-        "Add DOCTOR.md at the repository root and cli/templates/DOCTOR.md with instructions to repair only prd.json/progress metadata, preserve user intent, avoid product code changes, and complete in one pass",
-        "Update ralph init so DOCTOR.md is copied with DEVELOPER.md and PLANNER.md",
-        "Add a CLI fix/doctor command or equivalent fix flow that accepts --tool and --dir options consistent with ralph run",
-        "Before invoking the AI tool, call the existing prd.json validator and inject the exact current validation errors into the DOCTOR.md prompt under a clear heading",
-        "If prd.json is already valid, print a clear no-op message and do not invoke the AI tool",
-        "If prd.json is invalid, invoke the selected AI tool exactly once with the doctor prompt, then re-run validation and exit nonzero while printing remaining errors if validation still fails",
-        "Update README or CLI help documentation for the new fix flow",
+        "Update ralph init so it no longer copies DEVELOPER.md, PLANNER.md, or DOCTOR.md into the target project, while still creating/copying prd.json.example and progress.txt as appropriate",
+        "Update ralph run to read DEVELOPER.md and PLANNER.md from `join(getPackageDir(), \"templates\")` and remove the target-project required-file checks for those prompt files",
+        "Update ralph fix to read DOCTOR.md from `join(getPackageDir(), \"templates\")` and remove the target-project required-file check for DOCTOR.md",
+        "Preserve doctor behavior by injecting the exact current prd.json validation errors under the existing clear heading before invoking the AI tool",
+        "Add a shared helper or local equivalent so writing a tool runtime prompt records whether prompt.md, CLAUDE.md, or AGENTS.md already existed and deletes generated files or restores previous content in a finally/cleanup path",
+        "Ensure cleanup/restoration runs after successful phases, after failed AI tool execution, and after failed post-run validation where applicable",
+        "Update README/CLI documentation so setup no longer instructs users to keep DEVELOPER.md, PLANNER.md, or DOCTOR.md in the project root",
         "Typecheck passes (`npm run typecheck` exits 0 in cli/)",
-        "Manual CLI verification repairs a deliberately broken temporary prd.json in one doctor pass"
+        "Manual CLI verification in a temporary directory confirms `ralph init` omits phase prompt files and `ralph run`/`ralph fix` do not leave generated runtime prompt files behind or permanently overwrite an existing runtime prompt file"
       ],
       "priority": 1,
       "storyPriority": "high",
-      "passes": true,
+      "passes": false,
       "notes": ""
     }
   ]
