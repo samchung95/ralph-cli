@@ -21,3 +21,12 @@ Started: Tue Apr 21 2026 17:44:24 GMT+0800 (Singapore Standard Time)
   - Adding a string-enum field requires a new `requireStringEnum` validator; numeric fields already have `requirePositiveNumber`
   - Both the root prd.json AND cli/templates/prd.json.example must be updated together
 ---
+
+## 2026-04-21T18:20 - Planner - Cycle 1
+- Current PRD status: US-001 passes=true. Cycle 1 objective (persist storyPriority field) is complete.
+- Final success criteria status: NOT yet met. Remaining criteria: display priority on listings, edit priority, filter by priority, browser/UI verification.
+- Evidence reviewed: commit 2333d7d added storyPriority enum field + validator; commit da9695c marked passes=true. `npm run typecheck` exit 0, validate passes.
+- Next PRD slice planned: Cycle 2 — US-002 "Display priority on story listings". CLI validate/list output should print [HIGH]/[MEDIUM]/[LOW] tag beside each story id+title.
+- Files changed: prd.json (cycle advanced to 2, prdChain[0] marked complete, new prdChain[1] added, userStories replaced with US-002), progress.txt
+---
+
