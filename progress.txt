@@ -2,9 +2,43 @@
 Started: 2026-04-21T21:35+08:00
 ---
 
+## Codebase Patterns
+
+- CLI commands live in `cli/src/commands/<name>.ts` and are registered in `cli/src/index.ts`
+- Command option types are defined in `cli/src/types.ts` and imported into command files
+- The `exec()` utility in `cli/src/utils/exec.ts` handles spawning AI tools; pass `stdin` for non-copilot tools, `autoApprove` for copilot
+- Templates (DEVELOPER.md, PLANNER.md, DOCTOR.md) live in `cli/templates/` and are copied by `ralph init`; `getPackageDir()` from `utils/files.ts` resolves the template dir at runtime
+- `validatePrdFile()` in `cli/src/utils/prd.ts` returns `{ valid, errors[] }` — use this before any AI tool invocation
+- Build: `cd cli && npm run build` (tsup, ESM only); typecheck: `npm run typecheck`
+
 ## Setup - Cycle 1
 - Created initial evolving prd.json for the PRD doctor fix feature
 - Final success criteria: Ralph repairs invalid prd.json metadata in a single DOCTOR.md-powered pass with current validation issues injected into the prompt, then revalidates
 - First developer objective: Add the root/template DOCTOR.md prompt and CLI fix flow that validates, injects detected errors, runs one doctor pass, and revalidates
 - Archived previous completed run to archive/2026-04-21-task-priority
 ---
+
+## 2026-04-21T21:40+08:00 - Developer - US-001
+- Implemented the single-pass PRD doctor fix flow
+- Files changed:
+  - `DOCTOR.md` — new file at project root with schema reference + constraints
+  - `cli/templates/DOCTOR.md` — same content copied to CLI templates for `ralph init`
+  - `cli/src/commands/fix.ts` — new `ralph fix` command: validates prd.json, injects errors under `## Current prd.json Validation Errors`, invokes AI tool once, revalidates
+  - `cli/src/commands/init.ts` — added DOCTOR.md to the list of prompt files copied by `ralph init`
+  - `cli/src/index.ts` — registered `ralph fix` command with --tool, --dir, --bypass, --auto-approve options
+  - `cli/src/types.ts` — added `FixOptions` interface
+  - `cli/README.md` — added `ralph fix` to Quick Start, updated `ralph init` description, added full `ralph fix` command docs section
+  - `prd.json` — set US-001 `passes: true`
+- Checks run:
+  - `npm run typecheck` — exit 0 ✔
+  - `npm run build` — exit 0 ✔
+  - Manual: `ralph fix --dir .` with valid prd.json → "already valid, no doctor pass needed" ✔
+  - Manual: `ralph fix --dir .` with broken prd.json → detected 7 errors, injected into prompt, invoked claude ✔
+- Commits created:
+  - `feat: US-001 - Add single-pass PRD doctor fix flow`
+  - `chore: mark US-001 passes true in prd.json`
+- Learnings for future iterations:
+  - The `edit` tool matched on a non-unique string in prd.json; use PowerShell + ConvertFrom-Json/ConvertTo-Json for structured JSON edits
+  - TOOL_CONFIG is duplicated between run.ts and fix.ts; a future refactor could extract it to a shared util
+---
+
