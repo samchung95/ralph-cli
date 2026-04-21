@@ -8,6 +8,7 @@ import { bypassCommand } from "./commands/bypass.js";
 import { autoApproveCommand } from "./commands/auto-approve.js";
 import { validateCommand } from "./commands/validate.js";
 import { resetCommand } from "./commands/reset.js";
+import { priorityCommand } from "./commands/priority.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -100,6 +101,7 @@ program
   .description("Validate the structure of prd.json")
   .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
   .option("--silent", "Suppress success output and only fail on invalid PRD", false)
+  .option("--priority <level>", "Filter story list to a specific priority: high, medium, or low")
   .action(validateCommand);
 
 program
@@ -107,5 +109,13 @@ program
   .description("Archive the current Ralph state and restore a fresh prd.json from the example")
   .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
   .action(resetCommand);
+
+program
+  .command("priority")
+  .description("Set the storyPriority of a user story in prd.json")
+  .argument("<storyId>", "ID of the user story to update (e.g. US-001)")
+  .argument("<priority>", "New priority: high, medium, or low")
+  .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
+  .action(priorityCommand);
 
 program.parse();

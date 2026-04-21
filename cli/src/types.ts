@@ -37,6 +37,7 @@ export interface InstallOptions {
 export interface ValidateOptions {
   dir: string;
   silent?: boolean;
+  priority?: string;
 }
 
 export interface ResetOptions {
