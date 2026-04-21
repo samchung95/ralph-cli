@@ -14,8 +14,8 @@
       "Typecheck passes",
       "A manual CLI verification demonstrates repairing a deliberately broken prd.json in one doctor pass"
     ],
-    "passes": false,
-    "notes": ""
+    "passes": true,
+    "notes": "Verified cycle 1: DOCTOR.md exists at root and cli/templates/. `ralph fix` command validates prd.json, injects errors under '## Current prd.json Validation Errors', invokes AI once, and revalidates. No-op path confirmed. ralph init copies DOCTOR.md. Typecheck exits 0. Manual CLI verification confirmed repair of broken prd.json in one pass."
   },
   "planning": {
     "cycle": 1,
@@ -25,7 +25,7 @@
     {
       "cycle": 1,
       "objective": "Implement a one-pass PRD doctor fix flow",
-      "status": "active",
+      "status": "complete",
       "storyIds": [
         "US-001"
       ],

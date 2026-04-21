@@ -42,3 +42,19 @@ Started: 2026-04-21T21:35+08:00
   - TOOL_CONFIG is duplicated between run.ts and fix.ts; a future refactor could extract it to a shared util
 ---
 
+
+## 2026-04-21T21:45+08:00 - Planner - Cycle 1
+- Current PRD status: US-001 passes:true; all cycle-1 stories complete
+- Final success criteria status: PASSES — all 8 acceptance criteria verified
+- Evidence reviewed:
+  - DOCTOR.md present at project root and cli/templates/DOCTOR.md
+  - cli/src/commands/fix.ts implements validate→inject→invoke→revalidate flow
+  - Error injection uses '## Current prd.json Validation Errors' heading
+  - No-op path exits cleanly when prd.json is already valid
+  - cli/src/commands/init.ts copies DOCTOR.md on ralph init
+  - npm run typecheck exits 0
+  - Manual CLI verification documented in progress.txt
+  - Git commits: feat: US-001, chore: mark US-001 passes true
+- Next PRD slice: none — final success criteria met
+- Files changed: prd.json (finalSuccessCriteria.passes→true, notes added, prdChain[0].status→complete)
+---
