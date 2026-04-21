@@ -41,7 +41,7 @@
       ],
       "priority": 1,
       "storyPriority": "medium",
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]

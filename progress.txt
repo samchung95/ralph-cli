@@ -1,81 +1,23 @@
 # Ralph Progress Log
-Started: Mon Apr 20 2026
-
-## Setup - Cycle 1
-- Created initial evolving prd.json for documentation cleanup and GitHub Actions CI.
-- Final success criteria: clearer install/run/setup documentation and GitHub Actions verification for available test/build commands.
-- First developer objective: exploration only, so Ralph proves the develop/planner alternation before changing docs or CI.
+Started: Tue Apr 21 2026 17:44:24 GMT+0800 (Singapore Standard Time)
 ---
 
 ## Codebase Patterns
+- ralph-cli is a TypeScript ESM CLI. Run `npm run typecheck` in cli/ for type checking, `npm run build` then `node dist/index.js` for validation.
+- prd.json schema is validated by `cli/src/utils/prd.ts`. To add new required fields to userStories, add a `require*` call in the `userStories.forEach` block and add a helper if needed.
+- The root prd.json, prd.json.example, and cli/templates/prd.json.example must all stay in sync when updating the user story schema shape.
 
-- CLI package lives in `cli/` — TypeScript, built with tsup. Verification commands: `npm run build` and `npm run typecheck` (tsc --noEmit). No unit test runner configured.
-- Flowchart package lives in `flowchart/` — Vite + React. Has `lint` (eslint) and `build` (tsc -b + vite build).
-- Existing CI: `.github/workflows/deploy.yml` deploys the flowchart to GitHub Pages on push to main. No CLI verification workflow exists yet.
-- Root README.md and cli/README.md are both current and accurate. Main note: npm package `ralph-cli` is a placeholder; install from local `cli/`.
-
----
-
-## 2026-04-20T12:30 - Developer - US-001
-- Exploration of repository docs and verification commands (no code edits per story scope).
-- Files reviewed:
-  - README.md (root) — comprehensive, up-to-date; minor: npm placeholder note is accurate
-  - cli/README.md — accurate; covers all commands
-  - cli/package.json — scripts: build (tsup), dev, typecheck; no test script
-  - flowchart/package.json — scripts: dev, build, lint, preview; no test script
-  - .github/workflows/deploy.yml — deploys flowchart to Pages; no CLI CI workflow
-- Checks run: N/A (exploration only)
-- Commit: none (exploration; no code changed)
-- Recommended next PRD slice:
-  1. DOCS-CLEANUP: Root README and cli/README are largely clean. One doc update: the README references `snarktank/ralph` for Claude Code Marketplace; repo is actually `samchung95/ralph-cli` — verify and fix.
-  2. CI: Add `.github/workflows/ci.yml` running on push/PR to all branches:
-     - `cd cli && npm ci && npm run typecheck && npm run build`
-     - Optionally: `cd flowchart && npm ci && npm run build && npm run lint`
-  3. No true unit tests exist; strongest checks are typecheck + build. Document this in CI workflow comments.
-- Learnings:
-  - No unit tests in either package — next slice must add CI using typecheck/build as the verification steps.
-  - `.github/workflows/` already exists with deploy.yml, so adding ci.yml is straightforward.
----
-
-## 2026-04-20T12:33 - Developer - US-002
-- Created `.github/workflows/ci.yml` — triggers on push/PR to all branches, runs: `cd cli && npm ci && npm run typecheck && npm run build`.
-- Workflow includes comments noting no unit tests exist yet; typecheck + build are the strongest available checks.
-- Files changed: `.github/workflows/ci.yml`
-- Checks run: `npm run typecheck` ✅, `npm run build` ✅ (both pass locally)
-- Commit: `b5b808d feat: add GitHub Actions CI workflow`
+## 2026-04-21T18:15 - Developer - US-001
+- What was implemented: Added `storyPriority` field ("high" | "medium" | "low") to the prd.json user story schema. In the ralph-cli context, "tasks table" maps to the `userStories` array in prd.json, so this adds a human-readable priority label persisted alongside each story.
+- Files changed:
+  - cli/src/utils/prd.ts — added `requireStringEnum` helper; added validation of `storyPriority` on each userStory
+  - cli/templates/prd.json.example — added `"storyPriority": "medium"` to US-001
+  - prd.json — added `"storyPriority": "medium"` to US-001, then set `passes: true`
+  - prd.json.example — added `"storyPriority": "medium"` to US-001
+- Checks run and results: `npm run typecheck` → exit 0; `node dist/index.js validate` → prd.json is valid
+- Commit created: `feat: US-001 - Add priority field to database` (2333d7d)
 - Learnings for future iterations:
-  - `actions/setup-node@v4` with `cache: "npm"` and `cache-dependency-path: cli/package-lock.json` is the right pattern for a subdirectory package.
----
-
-- Current PRD status: US-001 passes (exploration complete, findings recorded in progress.txt).
-- Final success criteria status: NOT MET — no CI workflow exists; stale snarktank.github.io flowchart URL still in README.
-- Evidence reviewed: git log shows commit `7223621 feat: US-001 - Explore docs and verification commands`; only `.github/workflows/deploy.yml` exists (no CI); README.md lines 245/247 reference snarktank.github.io/ralph.
-- Cycle 1 prdChain marked complete.
-- Next PRD slice (cycle 2) planned with two tightly coupled small stories:
-  - US-002: Add .github/workflows/ci.yml — triggers on push/PR, runs CLI typecheck + build.
-  - US-003: Fix stale snarktank.github.io/ralph → samchung95.github.io/ralph-cli in README flowchart links.
-- Files changed: prd.json, progress.txt
----
-
-## 2026-04-20T12:35 - Planner - Cycle 2 (Final)
-- Current PRD status: US-002 ✅ (CI workflow committed b5b808d), US-003 ✅ (flowchart URL fixed, committed 1acb103).
-- Final success criteria status: MET — all six acceptance criteria satisfied.
-  - Docs clearly explain install/setup/skill/run workflows ✅
-  - Node CLI and shell script paths documented accurately ✅
-  - .github/workflows/ci.yml exists, triggers on push/PR ✅
-  - CI covers CLI typecheck + build ✅
-  - Workflow comments note no unit tests; typecheck/build are strongest checks ✅
-  - All local verification commands pass (typecheck ✅, build ✅)
-- Evidence reviewed: git log shows b5b808d (CI), 1acb103 (URL fix); grep confirms no stale snarktank.github.io in README.md (only correct marketplace identifier remains).
-- Cycle 2 prdChain marked complete. finalSuccessCriteria.passes set to true.
-- Files changed: prd.json, progress.txt
----
-
-## 2026-04-20T12:34 - Planner - Cycle 2
-- Current PRD status: US-002 passes ✅ (CI workflow committed in b5b808d). US-003 passes ❌ — README.md still contains two stale `snarktank.github.io/ralph` references (flowchart image link and View Interactive Flowchart link); neither has been updated to `samchung95.github.io/ralph-cli`.
-- Final success criteria status: NOT MET — stale flowchart URL in README.md is an open acceptance criterion.
-- Evidence reviewed: `git log --oneline` shows `f234b4c chore: mark US-002 passes=true`; `grep snarktank.github.io README.md` confirms two matches still present.
-- No new PRD slice created (US-003 still has passes: false). Cycle 2 prdChain remains active until US-003 is completed.
-- Next developer action: update README.md flowchart image link and 'View Interactive Flowchart' link from `snarktank.github.io/ralph` → `samchung95.github.io/ralph-cli`, commit with message `docs: fix stale flowchart URL`, then set US-003.passes = true.
-- Files changed: progress.txt
+  - The "database" / "tasks table" in the example PRD maps to the `userStories` schema in prd.json for this project
+  - Adding a string-enum field requires a new `requireStringEnum` validator; numeric fields already have `requirePositiveNumber`
+  - Both the root prd.json AND cli/templates/prd.json.example must be updated together
 ---
