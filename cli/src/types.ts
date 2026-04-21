@@ -34,3 +34,12 @@ export interface InstallOptions {
   tool: string;
 }
 
+export interface ValidateOptions {
+  dir: string;
+  silent?: boolean;
+}
+
+export interface ResetOptions {
+  dir: string;
+}
+

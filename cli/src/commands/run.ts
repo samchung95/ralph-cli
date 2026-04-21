@@ -4,6 +4,8 @@ import { fileExists, readText, writeText, copyFileSafe } from "../utils/files.js
 import { exec, commandExists } from "../utils/exec.js";
 import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
+import { archiveLabelFromBranch, archiveRunFiles } from "../utils/archive.js";
+import { validatePrdFile } from "../utils/prd.js";
 import type { RunOptions, Tool } from "../types.js";
 
 const COMPLETION_SIGNAL = "<promise>COMPLETE</promise>";
@@ -125,6 +127,7 @@ export async function runCommand(
   }
 
   await warnIfMissingFinalSuccessCriteria(prdPath);
+  await validatePrdOrExit(prdPath, "run startup");
 
   // ── Archive previous run if branch changed ─────────────────────────────
   if (await fileExists(lastBranchPath)) {
@@ -134,17 +137,11 @@ export async function runCommand(
       const lastBranch = (await readText(lastBranchPath)).trim();
 
       if (currentBranch && lastBranch && currentBranch !== lastBranch) {
-        const date = new Date().toISOString().split("T")[0];
-        const folderName = lastBranch.replace(/^ralph\//, "");
-        const archiveDir = join(dir, "archive", `${date}-${folderName}`);
-
         log.info(`Archiving previous run: ${lastBranch}`);
-        if (await fileExists(prdPath)) {
-          await copyFileSafe(prdPath, join(archiveDir, "prd.json"));
-        }
-        if (await fileExists(progressPath)) {
-          await copyFileSafe(progressPath, join(archiveDir, "progress.txt"));
-        }
+        const archiveDir = await archiveRunFiles(dir, archiveLabelFromBranch(lastBranch), [
+          prdPath,
+          progressPath,
+        ]);
         log.info(`   Archived to: ${archiveDir}`);
 
         // Reset progress file for new run
@@ -195,6 +192,8 @@ export async function runCommand(
   }
 
   for (let i = 1; i <= maxCycles; i++) {
+    await validatePrdOrExit(prdPath, `cycle ${i} start`);
+
     log.iteration(i, maxCycles, `${tool} developer`);
 
     const developResult = await runPhase(
@@ -207,11 +206,13 @@ export async function runCommand(
       copilotAutoApprove
     );
 
-    if (developResult.includes(COMPLETION_SIGNAL)) {
+    if (hasCompletionSignalLine(developResult)) {
       log.warn(
         "Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
       );
     }
+
+    await validatePrdOrExit(prdPath, `developer phase ${i}`);
 
     log.info(`Developer phase ${i} complete. Planning next...`);
 
@@ -227,7 +228,9 @@ export async function runCommand(
       copilotAutoApprove
     );
 
-    if (planResult.includes(COMPLETION_SIGNAL)) {
+    await validatePrdOrExit(prdPath, `planner phase ${i}`);
+
+    if (await plannerCompleted(prdPath, planResult)) {
       console.log("");
       log.success("Ralph completed the final success criteria!");
       log.info(`Completed during planner phase of cycle ${i} of ${maxCycles}`);
@@ -300,6 +303,52 @@ async function warnIfMissingFinalSuccessCriteria(prdPath: string): Promise<void>
   } catch {
     log.warn("Could not parse prd.json. The agent will need to fix it before continuing.");
   }
+}
+
+async function validatePrdOrExit(prdPath: string, context: string): Promise<void> {
+  const validation = await validatePrdFile(prdPath);
+  if (validation.valid) {
+    return;
+  }
+
+  log.error(`prd.json failed validation after ${context}.`);
+  for (const error of validation.errors) {
+    log.step(error);
+  }
+  process.exit(1);
+}
+
+async function plannerCompleted(prdPath: string, output: string): Promise<boolean> {
+  if (!hasCompletionSignalLine(output)) {
+    return false;
+  }
+
+  try {
+    const prd = JSON.parse(await readText(prdPath));
+    if (prd.finalSuccessCriteria?.passes === true) {
+      return true;
+    }
+
+    log.warn(
+      "Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
+    );
+    return false;
+  } catch {
+    log.warn(
+      "Planner emitted the completion signal, but prd.json could not be parsed afterward. Ignoring completion."
+    );
+    return false;
+  }
+}
+
+function hasCompletionSignalLine(output: string): boolean {
+  return stripAnsi(output)
+    .split(/\r?\n/)
+    .some((line) => line.trim() === COMPLETION_SIGNAL);
+}
+
+function stripAnsi(text: string): string {
+  return text.replace(/\u001B\[[0-9;]*m/g, "");
 }
 
 function sleep(ms: number): Promise<void> {

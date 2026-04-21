@@ -57,7 +57,7 @@ if [ ! -f "$PRD_FILE" ]; then
   exit 1
 fi
 
-if ! jq -e '.finalSuccessCriteria' "$PRD_FILE" >/dev/null 2>&1; then
+if [ -f "$PRD_FILE" ] && ! jq -e '.finalSuccessCriteria' "$PRD_FILE" >/dev/null 2>&1; then
   echo "Warning: prd.json has no finalSuccessCriteria. The planner phase should migrate it before the loop can complete."
 fi
 
@@ -69,6 +69,46 @@ runtime_prompt_file() {
   else
     echo "$SCRIPT_DIR/AGENTS.md"
   fi
+}
+
+archive_label_from_branch() {
+  local branch="$1"
+  local label="${branch#ralph/}"
+  label=$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+  if [ -z "$label" ]; then
+    label="run"
+  fi
+  printf '%s\n' "$label"
+}
+
+next_archive_dir() {
+  local label="$1"
+  local timestamp
+  local base_name
+  local candidate
+  local suffix=1
+
+  timestamp=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+  base_name="${timestamp}-${label}"
+  candidate="$ARCHIVE_DIR/$base_name"
+
+  while [ -e "$candidate" ]; do
+    candidate="$ARCHIVE_DIR/${base_name}-$(printf '%02d' "$suffix")"
+    suffix=$((suffix + 1))
+  done
+
+  printf '%s\n' "$candidate"
+}
+
+archive_run_files() {
+  local label="$1"
+  local archive_dir
+
+  archive_dir=$(next_archive_dir "$label")
+  mkdir -p "$archive_dir"
+  [ -f "$PRD_FILE" ] && cp "$PRD_FILE" "$archive_dir/"
+  [ -f "$PROGRESS_FILE" ] && cp "$PROGRESS_FILE" "$archive_dir/"
+  printf '%s\n' "$archive_dir"
 }
 
 run_phase() {
@@ -97,6 +137,71 @@ run_phase() {
   fi
 }
 
+has_completion_signal_line() {
+  printf '%s\n' "$1" | tr -d '\r' | grep -Fxq "<promise>COMPLETE</promise>"
+}
+
+planner_completed() {
+  local output="$1"
+
+  if ! has_completion_signal_line "$output"; then
+    return 1
+  fi
+
+  if jq -e '.finalSuccessCriteria.passes == true' "$PRD_FILE" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "Warning: Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
+  return 1
+}
+
+validate_prd_json() {
+  local context="$1"
+
+  if jq -e '
+    type == "object" and
+    (.project | type == "string") and
+    (.branchName | type == "string") and
+    (.description | type == "string") and
+    (.finalSuccessCriteria | type == "object") and
+    (.finalSuccessCriteria.description | type == "string") and
+    (.finalSuccessCriteria.acceptanceCriteria | type == "array" and all(.[]; type == "string")) and
+    (.finalSuccessCriteria.passes | type == "boolean") and
+    (.finalSuccessCriteria.notes | type == "string") and
+    (.planning | type == "object") and
+    (.planning.cycle | type == "number" and . >= 1 and floor == .) and
+    (.planning.currentObjective | type == "string") and
+    (.prdChain | type == "array" and length >= 1) and
+    (.userStories | type == "array") and
+    (all(.prdChain[];
+      type == "object" and
+      (.cycle | type == "number" and . >= 1 and floor == .) and
+      (.objective | type == "string") and
+      (.status | type == "string") and
+      (.storyIds | type == "array" and all(.[]; type == "string")) and
+      (.notes | type == "string")
+    )) and
+    (all(.userStories[];
+      type == "object" and
+      (.id | type == "string") and
+      (.title | type == "string") and
+      (.description | type == "string") and
+      (.acceptanceCriteria | type == "array" and all(.[]; type == "string")) and
+      (.priority | type == "number" and . > 0) and
+      (.passes | type == "boolean") and
+      (.notes | type == "string")
+    )) and
+    (([.prdChain[] | select(.status == "active")] | length) <= 1) and
+    (([.prdChain[] | select(.status == "active")] | length) == 0 or ([.prdChain[] | select(.status == "active")][0].cycle == .planning.cycle))
+  ' "$PRD_FILE" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "Error: prd.json failed validation after $context."
+  exit 1
+}
+
 # Archive previous run if branch changed
 if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then
   CURRENT_BRANCH=$(jq -r '.branchName // empty' "$PRD_FILE" 2>/dev/null || echo "")
@@ -104,15 +209,9 @@ if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then
   
   if [ -n "$CURRENT_BRANCH" ] && [ -n "$LAST_BRANCH" ] && [ "$CURRENT_BRANCH" != "$LAST_BRANCH" ]; then
     # Archive the previous run
-    DATE=$(date +%Y-%m-%d)
-    # Strip "ralph/" prefix from branch name for folder
-    FOLDER_NAME=$(echo "$LAST_BRANCH" | sed 's|^ralph/||')
-    ARCHIVE_FOLDER="$ARCHIVE_DIR/$DATE-$FOLDER_NAME"
+    ARCHIVE_FOLDER=$(archive_run_files "$(archive_label_from_branch "$LAST_BRANCH")")
     
     echo "Archiving previous run: $LAST_BRANCH"
-    mkdir -p "$ARCHIVE_FOLDER"
-    [ -f "$PRD_FILE" ] && cp "$PRD_FILE" "$ARCHIVE_FOLDER/"
-    [ -f "$PROGRESS_FILE" ] && cp "$PROGRESS_FILE" "$ARCHIVE_FOLDER/"
     echo "   Archived to: $ARCHIVE_FOLDER"
     
     # Reset progress file for new run
@@ -139,7 +238,11 @@ fi
 
 echo "Starting Ralph - Tool: $TOOL - Max cycles: $MAX_CYCLES"
 
+validate_prd_json "run startup"
+
 for i in $(seq 1 $MAX_CYCLES); do
+  validate_prd_json "cycle $i start"
+
   echo ""
   echo "==============================================================="
   echo "  Ralph Cycle $i of $MAX_CYCLES ($TOOL developer)"
@@ -147,9 +250,11 @@ for i in $(seq 1 $MAX_CYCLES); do
 
   OUTPUT=$(run_phase developer) || true
   
-  if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
+  if has_completion_signal_line "$OUTPUT"; then
     echo "Warning: Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
   fi
+
+  validate_prd_json "developer phase $i"
 
   echo "Developer phase $i complete. Planning next..."
 
@@ -160,7 +265,9 @@ for i in $(seq 1 $MAX_CYCLES); do
 
   OUTPUT=$(run_phase planner) || true
 
-  if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
+  validate_prd_json "planner phase $i"
+
+  if planner_completed "$OUTPUT"; then
     echo ""
     echo "Ralph completed the final success criteria!"
     echo "Completed during planner phase of cycle $i of $MAX_CYCLES"

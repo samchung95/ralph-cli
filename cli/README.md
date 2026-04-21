@@ -44,6 +44,10 @@ ralph run --tool copilot
 ralph run --tool copilot --auto-approve
 ralph run --tool codex
 ralph run --tool codex --bypass
+
+# Optional helpers
+ralph validate             # Check prd.json structure
+ralph reset                # Archive current run and restore fresh prd.json
 ```
 
 ## Commands
@@ -63,7 +67,7 @@ Options:
 
 ### `ralph install`
 
-Installs the Ralph setup skill (`/ralph`) into your AI tool's skills directory so it's available globally.
+Installs the Ralph setup skill (`/ralph`) into your AI tool's skills directory so it's available globally. If `/ralph` is already installed for the selected tool, Ralph removes the old skill folder first so stale files do not linger.
 
 ```bash
 ralph install              # Claude Code (default)
@@ -126,13 +130,38 @@ Options:
 ## What Happens During `ralph run`
 
 1. Validates the AI tool is installed and required files exist (`DEVELOPER.md`, `PLANNER.md`, and `prd.json`)
-2. Archives previous run if the branch in `prd.json` changed
-3. Initializes `progress.txt` if it doesn't exist
-4. For each cycle:
+2. Validates `prd.json` before the first cycle starts
+3. Archives previous run if the branch in `prd.json` changed
+4. Initializes `progress.txt` if it doesn't exist
+5. For each cycle:
+   - Validates `prd.json` before the developer phase starts
    - Copies `DEVELOPER.md` into the selected tool's runtime prompt file and runs a developer agent
+   - Validates `prd.json` after the developer phase
    - Copies `PLANNER.md` into the selected tool's runtime prompt file and runs a planner agent
+   - Validates `prd.json` after the planner phase
    - The planner checks `finalSuccessCriteria` and either writes the next PRD slice or emits `<promise>COMPLETE</promise>`
-5. If max cycles are reached without completion, exits with error
+6. If max cycles are reached without completion, exits with error
+
+If an agent leaves the PRD in an invalid shape at any checkpoint, the run stops immediately instead of continuing with a broken plan state.
+
+### `ralph validate`
+
+Validates the structure and Ralph-specific consistency of `prd.json`, including required sections, field types, and active cycle alignment.
+
+```bash
+ralph validate
+ralph validate --silent
+ralph validate -d path/to/project
+```
+
+### `ralph reset`
+
+Archives the current `prd.json` and `progress.txt` into `archive/<timestamp>-<branch>/`, restores `prd.json` from `prd.json.example`, resets `progress.txt`, and clears `.last-branch` so you can author a fresh PRD before the next run.
+
+```bash
+ralph reset
+ralph reset -d path/to/project
+```
 
 ## Development
 
@@ -142,4 +171,5 @@ npm install
 npm run build      # Build with tsup
 npm run dev        # Build in watch mode
 npm run typecheck  # Type check only
+npm install -g .   # Update the globally installed ralph command from this checkout
 ```

@@ -1,6 +1,11 @@
 import { join } from "path";
 import { homedir } from "os";
-import { copyFileSafe, fileExists, getPackageDir } from "../utils/files.js";
+import {
+  copyFileSafe,
+  fileExists,
+  getPackageDir,
+  removePathIfExists,
+} from "../utils/files.js";
 import { log } from "../utils/log.js";
 import { mkdir, readdir } from "fs/promises";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
@@ -45,6 +50,11 @@ export async function installCommand(options: InstallOptions): Promise<void> {
     const destSkillFile = join(destSkillDir, "SKILL.md");
 
     if (await fileExists(srcSkillFile)) {
+      if (await fileExists(destSkillDir)) {
+        await removePathIfExists(destSkillDir);
+        log.info(`Removed existing skill: ${destSkillDir}`);
+      }
+
       await copyFileSafe(srcSkillFile, destSkillFile);
       log.success(`Installed skill: ${skillName} → ${destSkillDir}`);
     }

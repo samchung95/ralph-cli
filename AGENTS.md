@@ -55,5 +55,9 @@ npm run dev
 - The runner copies `DEVELOPER.md` or `PLANNER.md` into the selected tool's runtime prompt file before spawning the tool.
 - Memory persists via git history, `progress.txt`, and the evolving `prd.json`.
 - `prd.json` should keep a global `finalSuccessCriteria` so the planner can decide when to stop.
+- Ralph validates `prd.json` before run startup, at each cycle start, and after each developer and planner phase so broken PRD structure stops the loop immediately.
+- Use `ralph reset` before authoring a new PRD; do not reset inline with `ralph run` because the fresh PRD still needs to be created or edited before the agent loop starts.
+- `ralph reset` archives the current PRD/progress into a timestamped archive folder before restoring a fresh `prd.json` from the example.
+- `ralph install --tool [tool]` removes the existing installed `/ralph` skill folder for the selected tool before copying the bundled skill, preventing stale skill files.
 - Stories should be small enough to complete in one developer phase.
 - Always update repository instructions with discovered patterns for future iterations.

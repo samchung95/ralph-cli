@@ -64,6 +64,8 @@ ralph install --tool copilot
 ralph install --tool codex
 ```
 
+`ralph install` replaces any existing `/ralph` skill folder for the selected tool before installing the bundled copy.
+
 Codex can optionally run with full access. This setting is remembered:
 
 ```bash
@@ -193,6 +195,10 @@ ralph run --tool codex --bypass
 
 # Fully autonomous Claude Code mode
 ralph run --dangerously-skip-permissions 15
+
+# Optional helpers
+ralph validate
+ralph reset
 ```
 
 With the copied shell script:
@@ -222,6 +228,23 @@ Ralph will:
 6. Check `finalSuccessCriteria`
 7. If success criteria pass, output `<promise>COMPLETE</promise>`
 8. Otherwise, evolve `prd.json` with the next PRD slice and repeat
+
+Ralph validates the `prd.json` structure before the run starts, at the start of every cycle, and after every developer and planner phase. If the agent leaves the PRD in an invalid state, the run stops immediately instead of continuing with a broken planning chain.
+
+Use these helper commands with the Node CLI:
+
+```bash
+ralph validate   # Validate prd.json structure and cycle consistency
+ralph reset      # Archive current prd/progress and restore a fresh prd.json before authoring the next PRD
+```
+
+To update your global `ralph` command after changing this checkout, run:
+
+```bash
+cd /path/to/ralph-cli/cli
+npm run build
+npm install -g .
+```
 
 ## Key Files
 
@@ -333,7 +356,7 @@ After copying `DEVELOPER.md` and `PLANNER.md` to your project, customize them fo
 
 ## Archiving
 
-Ralph automatically archives previous runs when you start a new feature (different `branchName`). Archives are saved to `archive/YYYY-MM-DD-feature-name/`.
+Ralph automatically archives previous runs when you start a new feature (different `branchName`). Archives are saved to `archive/<timestamp>-feature-name/`.
 
 ## References
 

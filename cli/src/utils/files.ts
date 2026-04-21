@@ -1,4 +1,4 @@
-import { readFile, writeFile, access, mkdir, copyFile } from "fs/promises";
+import { readFile, writeFile, access, mkdir, copyFile, rm } from "fs/promises";
 import { dirname } from "path";
 import { constants } from "fs";
 import { fileURLToPath } from "url";
@@ -42,6 +42,13 @@ export async function copyFileSafe(
 ): Promise<void> {
   await mkdir(dirname(dest), { recursive: true });
   await copyFile(src, dest);
+}
+
+/**
+ * Remove a file or directory if it exists
+ */
+export async function removePathIfExists(filePath: string): Promise<void> {
+  await rm(filePath, { recursive: true, force: true });
 }
 
 /**

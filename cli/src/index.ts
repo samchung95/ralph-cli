@@ -6,6 +6,8 @@ import { installCommand } from "./commands/install.js";
 import { runCommand } from "./commands/run.js";
 import { bypassCommand } from "./commands/bypass.js";
 import { autoApproveCommand } from "./commands/auto-approve.js";
+import { validateCommand } from "./commands/validate.js";
+import { resetCommand } from "./commands/reset.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -92,5 +94,18 @@ program
   )
   .option("-d, --dir <path>", "Project directory containing DEVELOPER.md, PLANNER.md, and prd.json", process.cwd())
   .action(runCommand);
+
+program
+  .command("validate")
+  .description("Validate the structure of prd.json")
+  .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
+  .option("--silent", "Suppress success output and only fail on invalid PRD", false)
+  .action(validateCommand);
+
+program
+  .command("reset")
+  .description("Archive the current Ralph state and restore a fresh prd.json from the example")
+  .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
+  .action(resetCommand);
 
 program.parse();
