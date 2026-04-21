@@ -48,13 +48,14 @@ ralph run --tool codex --bypass
 # Optional helpers
 ralph validate             # Check prd.json structure
 ralph reset                # Archive current run and restore fresh prd.json
+ralph fix                  # Repair a broken prd.json in one doctor pass
 ```
 
 ## Commands
 
 ### `ralph init`
 
-Copies `DEVELOPER.md`, `PLANNER.md`, `prd.json.example`, and `progress.txt` into your project root so Ralph knows how to operate in your repo.
+Copies `DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, `prd.json.example`, and `progress.txt` into your project root so Ralph knows how to operate in your repo.
 
 ```bash
 cd your-project
@@ -162,6 +163,24 @@ Archives the current `prd.json` and `progress.txt` into `archive/<timestamp>-<br
 ralph reset
 ralph reset -d path/to/project
 ```
+
+### `ralph fix`
+
+Runs a single PRD doctor pass to repair a broken `prd.json`. Before invoking the AI tool, it detects current validation errors and injects them into the `DOCTOR.md` prompt. If `prd.json` is already valid, it exits cleanly without calling the AI tool.
+
+```bash
+ralph fix                       # Claude Code (default)
+ralph fix --tool amp
+ralph fix --tool copilot
+ralph fix --tool codex
+ralph fix -d path/to/project
+```
+
+Options:
+- `--tool <tool>` — AI tool to use (default: `claude`)
+- `-d, --dir <path>` — Project directory containing `DOCTOR.md` and `prd.json` (default: cwd)
+- `--bypass` / `--no-bypass` — Override bypass mode for Codex
+- `--auto-approve` / `--no-auto-approve` — Override Copilot auto-approval
 
 ## Development
 

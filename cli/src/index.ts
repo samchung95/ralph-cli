@@ -9,6 +9,7 @@ import { autoApproveCommand } from "./commands/auto-approve.js";
 import { validateCommand } from "./commands/validate.js";
 import { resetCommand } from "./commands/reset.js";
 import { priorityCommand } from "./commands/priority.js";
+import { fixCommand } from "./commands/fix.js";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -117,5 +118,36 @@ program
   .argument("<priority>", "New priority: high, medium, or low")
   .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
   .action(priorityCommand);
+
+program
+  .command("fix")
+  .description("Run a single PRD doctor pass to repair an invalid prd.json")
+  .option(
+    "--tool <tool>",
+    `AI tool to use (${TOOL_NAMES})`,
+    "claude"
+  )
+  .option("-d, --dir <path>", "Project directory containing DOCTOR.md and prd.json", process.cwd())
+  .option(
+    "--bypass",
+    "Use bypass mode for this run (Codex uses full access)",
+    undefined
+  )
+  .option(
+    "--no-bypass",
+    "Disable bypass mode for this run",
+    undefined
+  )
+  .option(
+    "--auto-approve",
+    "Auto-approve Copilot prompts for this run",
+    undefined
+  )
+  .option(
+    "--no-auto-approve",
+    "Disable Copilot auto-approval for this run",
+    undefined
+  )
+  .action(fixCommand);
 
 program.parse();

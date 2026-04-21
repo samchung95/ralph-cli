@@ -13,7 +13,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   log.header("Ralph Init");
   log.info(`Target directory: ${dir}`);
 
-  const promptFiles = ["DEVELOPER.md", "PLANNER.md"];
+  const promptFiles = ["DEVELOPER.md", "PLANNER.md", "DOCTOR.md"];
   for (const promptFile of promptFiles) {
     const src = join(templateDir, promptFile);
     const dest = join(dir, promptFile);

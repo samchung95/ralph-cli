@@ -44,3 +44,10 @@ export interface ResetOptions {
   dir: string;
 }
 
+export interface FixOptions {
+  tool: string;
+  dir: string;
+  bypass?: boolean;
+  autoApprove?: boolean;
+}
+
