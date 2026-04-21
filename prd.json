@@ -1,72 +1,55 @@
 {
-  "project": "MyApp",
-  "branchName": "ralph/task-priority",
-  "description": "Task Priority System - first evolving PRD slice",
+  "project": "Ralph CLI",
+  "branchName": "ralph/prd-doctor-fix",
+  "description": "PRD Doctor Fix - first evolving PRD slice",
   "finalSuccessCriteria": {
-    "description": "Users can assign, view, edit, and filter task priority across the app, with priority persisted between sessions.",
+    "description": "Ralph can repair an invalid prd.json in one doctor pass by detecting the current validation issue, injecting that issue into a DOCTOR.md prompt, running the selected AI tool once, and revalidating the file afterward.",
     "acceptanceCriteria": [
-      "Tasks persist a priority value of high, medium, or low",
-      "Users can see priority on task cards without opening details",
-      "Users can edit priority from the task edit flow",
-      "Users can filter the task list by priority",
+      "A DOCTOR.md prompt exists at the project root and in CLI templates alongside DEVELOPER.md and PLANNER.md",
+      "The CLI exposes a fix/doctor flow that detects current prd.json validation errors before invoking the AI tool",
+      "The doctor prompt sent to the AI tool includes the exact detected validation issue(s) in a clearly labeled section",
+      "The fix flow runs a single doctor pass, then revalidates prd.json and reports success only when validation passes",
+      "If prd.json is already valid, the fix flow exits cleanly without invoking a doctor pass",
+      "ralph init installs DOCTOR.md for new projects",
       "Typecheck passes",
-      "Relevant UI flows are verified in browser"
+      "A manual CLI verification demonstrates repairing a deliberately broken prd.json in one doctor pass"
     ],
-    "passes": true,
-    "notes": "All criteria met: storyPriority field persisted in prd.json (US-001); validate prints priority tags (US-002); ralph priority command edits priority (US-003); validate --priority flag filters by priority (US-004). Typecheck passes. CLI end-to-end verified."
+    "passes": false,
+    "notes": ""
   },
   "planning": {
-    "cycle": 4,
-    "currentObjective": "Allow users to filter the story list by priority via a CLI flag on validate"
+    "cycle": 1,
+    "currentObjective": "Add the single-pass PRD doctor prompt and CLI fix path that injects current validation errors"
   },
   "prdChain": [
     {
       "cycle": 1,
-      "objective": "Persist task priority in the data model",
-      "status": "complete",
+      "objective": "Implement a one-pass PRD doctor fix flow",
+      "status": "active",
       "storyIds": ["US-001"],
-      "notes": "US-001 passed: storyPriority enum field added to schema and validated."
-    },
-    {
-      "cycle": 2,
-      "objective": "Show priority label when the CLI lists user stories",
-      "status": "complete",
-      "storyIds": ["US-002"],
-      "notes": "US-002 passed: validate command prints [HIGH]/[MEDIUM]/[LOW] beside each story."
-    },
-    {
-      "cycle": 3,
-      "objective": "Allow editing storyPriority of a user story via CLI",
-      "status": "complete",
-      "storyIds": ["US-003"],
-      "notes": "US-003 passed: ralph priority <storyId> <high|medium|low> command implemented."
-    },
-    {
-      "cycle": 4,
-      "objective": "Filter story list by priority in the validate output",
-      "status": "complete",
-      "storyIds": ["US-004"],
-      "notes": "US-004 passed: ralph validate --priority <level> filters story list."
+      "notes": ""
     }
   ],
   "userStories": [
     {
-      "id": "US-004",
-      "title": "Filter story list by priority",
-      "description": "As a user, I want to pass a --priority flag to `ralph validate` to show only stories matching that priority level, so I can focus on high-priority work.",
+      "id": "US-001",
+      "title": "Add single-pass PRD doctor fix flow",
+      "description": "As a Ralph user, I want Ralph to detect prd.json validation issues and run a DOCTOR.md-powered fix pass with the current issue injected, so broken PRD metadata can be repaired without entering the develop/plan loop.",
       "acceptanceCriteria": [
-        "`ralph validate --priority high` lists only stories with storyPriority=high",
-        "`ralph validate --priority medium` lists only stories with storyPriority=medium",
-        "`ralph validate --priority low` lists only stories with storyPriority=low",
-        "When no stories match the filter, a message is printed indicating zero results",
-        "Without --priority flag, all stories are listed (existing behavior preserved)",
+        "Add DOCTOR.md at the repository root and cli/templates/DOCTOR.md with instructions to repair only prd.json/progress metadata, preserve user intent, avoid product code changes, and complete in one pass",
+        "Update ralph init so DOCTOR.md is copied with DEVELOPER.md and PLANNER.md",
+        "Add a CLI fix/doctor command or equivalent fix flow that accepts --tool and --dir options consistent with ralph run",
+        "Before invoking the AI tool, call the existing prd.json validator and inject the exact current validation errors into the DOCTOR.md prompt under a clear heading",
+        "If prd.json is already valid, print a clear no-op message and do not invoke the AI tool",
+        "If prd.json is invalid, invoke the selected AI tool exactly once with the doctor prompt, then re-run validation and exit nonzero while printing remaining errors if validation still fails",
+        "Update README or CLI help documentation for the new fix flow",
         "Typecheck passes (`npm run typecheck` exits 0 in cli/)",
-        "End-to-end CLI output verified: running validate with and without filter shows correct results"
+        "Manual CLI verification repairs a deliberately broken temporary prd.json in one doctor pass"
       ],
       "priority": 1,
       "storyPriority": "high",
-      "passes": true,
-      "notes": "validate --priority flag implemented; zero-match message shown; typecheck and build pass."
+      "passes": false,
+      "notes": ""
     }
   ]
 }

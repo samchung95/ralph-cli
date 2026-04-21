@@ -1,82 +1,10 @@
 # Ralph Progress Log
-Started: Tue Apr 21 2026 17:44:24 GMT+0800 (Singapore Standard Time)
+Started: 2026-04-21T21:35+08:00
 ---
 
-## Codebase Patterns
-- ralph-cli is a TypeScript ESM CLI. Run `npm run typecheck` in cli/ for type checking, `npm run build` then `node dist/index.js` for validation.
-- prd.json schema is validated by `cli/src/utils/prd.ts`. To add new required fields to userStories, add a `require*` call in the `userStories.forEach` block and add a helper if needed.
-- The root prd.json, prd.json.example, and cli/templates/prd.json.example must all stay in sync when updating the user story schema shape.
-
-## 2026-04-21T18:15 - Developer - US-001
-- What was implemented: Added `storyPriority` field ("high" | "medium" | "low") to the prd.json user story schema. In the ralph-cli context, "tasks table" maps to the `userStories` array in prd.json, so this adds a human-readable priority label persisted alongside each story.
-- Files changed:
-  - cli/src/utils/prd.ts — added `requireStringEnum` helper; added validation of `storyPriority` on each userStory
-  - cli/templates/prd.json.example — added `"storyPriority": "medium"` to US-001
-  - prd.json — added `"storyPriority": "medium"` to US-001, then set `passes: true`
-  - prd.json.example — added `"storyPriority": "medium"` to US-001
-- Checks run and results: `npm run typecheck` → exit 0; `node dist/index.js validate` → prd.json is valid
-- Commit created: `feat: US-001 - Add priority field to database` (2333d7d)
-- Learnings for future iterations:
-  - The "database" / "tasks table" in the example PRD maps to the `userStories` schema in prd.json for this project
-  - Adding a string-enum field requires a new `requireStringEnum` validator; numeric fields already have `requirePositiveNumber`
-  - Both the root prd.json AND cli/templates/prd.json.example must be updated together
+## Setup - Cycle 1
+- Created initial evolving prd.json for the PRD doctor fix feature
+- Final success criteria: Ralph repairs invalid prd.json metadata in a single DOCTOR.md-powered pass with current validation issues injected into the prompt, then revalidates
+- First developer objective: Add the root/template DOCTOR.md prompt and CLI fix flow that validates, injects detected errors, runs one doctor pass, and revalidates
+- Archived previous completed run to archive/2026-04-21-task-priority
 ---
-
-## 2026-04-21T18:20 - Planner - Cycle 1
-- Current PRD status: US-001 passes=true. Cycle 1 objective (persist storyPriority field) is complete.
-- Final success criteria status: NOT yet met. Remaining criteria: display priority on listings, edit priority, filter by priority, browser/UI verification.
-- Evidence reviewed: commit 2333d7d added storyPriority enum field + validator; commit da9695c marked passes=true. `npm run typecheck` exit 0, validate passes.
-- Next PRD slice planned: Cycle 2 — US-002 "Display priority on story listings". CLI validate/list output should print [HIGH]/[MEDIUM]/[LOW] tag beside each story id+title.
-- Files changed: prd.json (cycle advanced to 2, prdChain[0] marked complete, new prdChain[1] added, userStories replaced with US-002), progress.txt
----
-
-## 2026-04-21T18:21 - Developer - US-002
-- What was implemented: Enhanced `ralph validate` to print colored [HIGH]/[MEDIUM]/[LOW] tags beside each story id and title after successful validation.
-- Files changed:
-  - cli/src/commands/validate.ts — added chalk import, PRIORITY_TAG map, printStoryList() helper
-- Checks run and results: `npm run typecheck` → exit 0; `node dist/index.js validate` shows "[HIGH] US-002 — Display priority on story listings"
-- Commit created: feat: US-002 - Display priority on story listings (6f3a0ed)
-
-## 2026-04-21T18:21 - Planner - Cycle 2
-- Current PRD status: US-002 passes=true. Cycle 2 objective (show priority labels) complete.
-- Final success criteria status: NOT yet met. Remaining: edit priority, filter by priority.
-- Next PRD slice planned: Cycle 3 — US-003 "Edit story priority via CLI". New `ralph priority <storyId> <high|medium|low>` command.
-- Files changed: prd.json, progress.txt
----
-
-## 2026-04-21T18:21 - Developer - US-003
-- What was implemented: Added `ralph priority <storyId> <high|medium|low>` command that updates storyPriority in prd.json. Errors on invalid story id or invalid priority value.
-- Files changed:
-  - cli/src/commands/priority.ts — new command implementation
-  - cli/src/index.ts — registered `priority` command
-- Checks run and results: `npm run typecheck` → exit 0; invalid id exits 1; invalid priority exits 1; valid update confirmed by validate showing updated tag.
-
-## 2026-04-21T18:21 - Planner - Cycle 3
-- Current PRD status: US-003 passes=true. Cycle 3 objective (edit priority via CLI) complete.
-- Final success criteria status: NOT yet met. Remaining: filter by priority, end-to-end verification.
-- Next PRD slice planned: Cycle 4 — US-004 "Filter story list by priority". `ralph validate --priority <level>` flag.
-- Files changed: prd.json, progress.txt
----
-
-## 2026-04-21T18:21 - Developer - US-004
-- What was implemented: Added `--priority <level>` option to `ralph validate`. Filters the story list output to only stories matching the given priority. Shows "No stories with priority '...'" when filter has zero matches.
-- Files changed:
-  - cli/src/types.ts — added `priority?: string` to ValidateOptions
-  - cli/src/commands/validate.ts — added filter logic to printStoryList(), validated --priority input
-  - cli/src/index.ts — registered --priority option on validate command
-- Checks run and results: `npm run typecheck` → exit 0; --priority high shows only high stories; --priority low with no low stories shows zero-match message.
-
-## 2026-04-21T18:21 - Planner - Cycle 4 (FINAL)
-- Current PRD status: US-004 passes=true. All cycles complete.
-- Final success criteria status: ALL MET.
-  - Tasks persist a priority value ✅ (US-001)
-  - Users can see priority on task cards ✅ (US-002)
-  - Users can edit priority from task edit flow ✅ (US-003)
-  - Users can filter the task list by priority ✅ (US-004)
-  - Typecheck passes ✅ (verified each cycle)
-  - UI flows verified ✅ (CLI end-to-end verified at each step)
-- finalSuccessCriteria.passes set to true.
-- Files changed: prd.json (passes=true, all prdChain entries complete), progress.txt
----
-
-
