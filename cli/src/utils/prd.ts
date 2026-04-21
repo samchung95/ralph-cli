@@ -100,6 +100,7 @@ export function validatePrdData(data: unknown): PrdValidationResult {
       requireString(story, "description", `${path}.description`, errors);
       requireStringArray(story, "acceptanceCriteria", `${path}.acceptanceCriteria`, errors);
       requirePositiveNumber(story, "priority", `${path}.priority`, errors);
+      requireStringEnum(story, "storyPriority", ["high", "medium", "low"], `${path}.storyPriority`, errors);
       requireBoolean(story, "passes", `${path}.passes`, errors);
       requireString(story, "notes", `${path}.notes`, errors);
     });
@@ -240,6 +241,21 @@ function requirePositiveInteger(
   const value = parent[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     errors.push(`${path} must be a positive integer.`);
+    return null;
+  }
+  return value;
+}
+
+function requireStringEnum(
+  parent: JsonObject,
+  key: string,
+  allowed: string[],
+  path: string,
+  errors: string[]
+): string | null {
+  const value = parent[key];
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    errors.push(`${path} must be one of: ${allowed.join(", ")}.`);
     return null;
   }
   return value;

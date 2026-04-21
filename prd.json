@@ -1,75 +1,48 @@
 {
-  "project": "Ralph CLI",
-  "branchName": "ralph/docs-ci-tests-cli",
-  "description": "Add GitHub Actions CI workflow and fix stale snarktank flowchart URL in README",
+  "project": "MyApp",
+  "branchName": "ralph/task-priority",
+  "description": "Task Priority System - first evolving PRD slice",
   "finalSuccessCriteria": {
-    "description": "Ralph CLI documentation is clearer for install/run/setup, and the repository has GitHub Actions CI that runs the available test or verification commands for the CLI and related packages.",
+    "description": "Users can assign, view, edit, and filter task priority across the app, with priority persisted between sessions.",
     "acceptanceCriteria": [
-      "Repository documentation clearly explains the current install, setup, skill, and run workflows without stale two-skill or npm-placeholder confusion",
-      "Documentation describes the Node CLI path and manual shell script path accurately",
-      "A GitHub Actions workflow exists under .github/workflows and runs the repository's available unit-test or verification commands",
-      "The CI workflow covers the CLI package verification commands",
-      "If no true unit tests exist yet, the workflow documents and runs the strongest available checks such as typecheck and build",
-      "All configured local verification commands pass"
+      "Tasks persist a priority value of high, medium, or low",
+      "Users can see priority on task cards without opening details",
+      "Users can edit priority from the task edit flow",
+      "Users can filter the task list by priority",
+      "Typecheck passes",
+      "Relevant UI flows are verified in browser"
     ],
-    "passes": true,
-    "notes": "CI workflow .github/workflows/ci.yml added (b5b808d) — runs npm ci, typecheck, and build on every push/PR. README.md stale snarktank.github.io flowchart links fixed to samchung95.github.io/ralph-cli (1acb103). All acceptance criteria verified."
+    "passes": false,
+    "notes": ""
   },
   "planning": {
-    "cycle": 2,
-    "currentObjective": "Add GitHub Actions CI workflow for CLI typecheck + build, and fix stale snarktank.github.io flowchart URL in README"
+    "cycle": 1,
+    "currentObjective": "Add the persisted priority field so later slices can build UI on top of it"
   },
   "prdChain": [
     {
       "cycle": 1,
-      "objective": "Explore current docs and test/build commands, then record a plan for docs cleanup and GitHub Actions CI",
-      "status": "complete",
-      "storyIds": [
-        "US-001"
-      ],
-      "notes": "Exploration complete; developer recorded findings and next slice recommendations in progress.txt."
-    },
-    {
-      "cycle": 2,
-      "objective": "Add GitHub Actions CI workflow for CLI typecheck + build, and fix stale snarktank flowchart URL in README",
-      "status": "complete",
-      "storyIds": [
-        "US-002",
-        "US-003"
-      ],
-      "notes": "Both stories completed. CI workflow added; stale flowchart URL fixed."
+      "objective": "Persist task priority in the data model",
+      "status": "active",
+      "storyIds": ["US-001"],
+      "notes": ""
     }
   ],
   "userStories": [
     {
-      "id": "US-002",
-      "title": "Add GitHub Actions CI workflow",
-      "description": "As a maintainer, I want a GitHub Actions CI workflow that runs the CLI package's strongest available verification commands (typecheck and build) on every push and pull request so that regressions are caught automatically.",
+      "id": "US-001",
+      "title": "Add priority field to database",
+      "description": "As a developer, I need to store task priority so it persists across sessions.",
       "acceptanceCriteria": [
-        "File .github/workflows/ci.yml is created",
-        "Workflow triggers on push and pull_request to all branches",
-        "Workflow job runs: cd cli && npm ci && npm run typecheck && npm run build",
-        "Workflow comments note that no unit tests exist yet; typecheck and build are the strongest checks available",
-        "npm run typecheck and npm run build both pass locally before committing",
-        "Committed with message: feat: add GitHub Actions CI workflow"
+        "Add priority column to tasks table: high, medium, or low",
+        "Default existing and new tasks to medium priority",
+        "Generate and run migration successfully",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "storyPriority": "medium",
+      "passes": false,
       "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "Fix stale snarktank.github.io flowchart URL in README",
-      "description": "As a user reading the README, I want the flowchart link to point to the current GitHub Pages deployment so that clicking the link works.",
-      "acceptanceCriteria": [
-        "README.md flowchart image link and 'View Interactive Flowchart' text link are updated from snarktank.github.io/ralph to samchung95.github.io/ralph-cli",
-        "The Claude Code marketplace plugin identifier (snarktank/ralph on line ~131) is left unchanged as it is the correct marketplace identifier",
-        "No other unintentional snarktank references remain in README.md",
-        "Committed with message: docs: fix stale flowchart URL"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": "README.md flowchart image and 'View Interactive Flowchart' links updated to samchung95.github.io/ralph-cli; marketplace identifier snarktank/ralph left unchanged."
     }
   ]
 }
