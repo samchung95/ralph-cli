@@ -1,6 +1,6 @@
 import { resolve, join } from "path";
 import { log } from "../utils/log.js";
-import { fileExists, readText, writeText } from "../utils/files.js";
+import { fileExists, readText, writeText, getPackageDir, removePathIfExists } from "../utils/files.js";
 import { exec, commandExists } from "../utils/exec.js";
 import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
@@ -77,14 +77,6 @@ export async function fixCommand(options: FixOptions): Promise<void> {
     process.exit(1);
   }
 
-  // ── Validate DOCTOR.md exists ──────────────────────────────────────────
-  const doctorPath = join(dir, DOCTOR_PROMPT_FILE);
-  if (!(await fileExists(doctorPath))) {
-    log.error(`${DOCTOR_PROMPT_FILE} not found in ${dir}`);
-    log.info('Run "ralph init" first to set up the project.');
-    process.exit(1);
-  }
-
   // ── Validate prd.json exists ───────────────────────────────────────────
   const prdPath = join(dir, "prd.json");
   if (!(await fileExists(prdPath))) {
@@ -107,32 +99,52 @@ export async function fixCommand(options: FixOptions): Promise<void> {
     log.step(err);
   }
 
+  // ── Load DOCTOR.md from Ralph package templates ────────────────────────
+  const templateDir = join(getPackageDir(), "templates");
+  const doctorTemplatePath = join(templateDir, DOCTOR_PROMPT_FILE);
+  if (!(await fileExists(doctorTemplatePath))) {
+    log.error(`${DOCTOR_PROMPT_FILE} not found in Ralph package at ${doctorTemplatePath}`);
+    process.exit(1);
+  }
+  const doctorPrompt = await readText(doctorTemplatePath);
+
   // ── Build doctor prompt with injected errors ───────────────────────────
-  const doctorPrompt = await readText(doctorPath);
   const errorBlock = buildErrorBlock(initial.errors);
   const fullPrompt = `${doctorPrompt}\n\n${errorBlock}`;
 
   // ── Write prompt to tool runtime file and invoke tool ──────────────────
   const runtimePromptPath = join(dir, toolConfig.runtimePromptFile);
+  const previousContent = (await fileExists(runtimePromptPath))
+    ? await readText(runtimePromptPath)
+    : null;
+
   await writeText(runtimePromptPath, fullPrompt);
   log.info(`Loaded ${DOCTOR_PROMPT_FILE} (with errors injected) into ${toolConfig.runtimePromptFile}`);
   log.info(`Invoking ${tool} for a single doctor pass…`);
 
-  await exec(
-    toolConfig.binary,
-    toolConfig.args(false, bypass),
-    {
-      cwd: dir,
-      stdin: tool === "copilot" ? undefined : fullPrompt,
-      autoApprove:
-        tool === "copilot"
-          ? {
-              enabled: copilotAutoApprove,
-              label: "Copilot",
-            }
-          : undefined,
+  try {
+    await exec(
+      toolConfig.binary,
+      toolConfig.args(false, bypass),
+      {
+        cwd: dir,
+        stdin: tool === "copilot" ? undefined : fullPrompt,
+        autoApprove:
+          tool === "copilot"
+            ? {
+                enabled: copilotAutoApprove,
+                label: "Copilot",
+              }
+            : undefined,
+      }
+    );
+  } finally {
+    if (previousContent !== null) {
+      await writeText(runtimePromptPath, previousContent);
+    } else {
+      await removePathIfExists(runtimePromptPath);
     }
-  );
+  }
 
   // ── Revalidate after doctor pass ──────────────────────────────────────
   const recheck = await validatePrdFile(prdPath);

@@ -55,7 +55,7 @@ ralph fix                  # Repair a broken prd.json in one doctor pass
 
 ### `ralph init`
 
-Copies `DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, `prd.json.example`, and `progress.txt` into your project root so Ralph knows how to operate in your repo.
+Creates `prd.json.example` and `progress.txt` in your project root so you can author a PRD and start Ralph. Phase prompt files (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`) are loaded from the Ralph package at runtime and no longer need to be kept in your project.
 
 ```bash
 cd your-project
@@ -126,19 +126,19 @@ Options:
 - `--dangerously-skip-permissions` — Pass `--dangerously-skip-permissions` to Claude Code
 - `--bypass` / `--no-bypass` — Override the remembered bypass setting for this run
 - `--auto-approve` / `--no-auto-approve` — Override remembered Copilot auto-approval for this run
-- `-d, --dir <path>` — Project directory containing `DEVELOPER.md`, `PLANNER.md`, and `prd.json` (default: cwd)
+- `-d, --dir <path>` — Project directory containing `prd.json` (default: cwd)
 
 ## What Happens During `ralph run`
 
-1. Validates the AI tool is installed and required files exist (`DEVELOPER.md`, `PLANNER.md`, and `prd.json`)
+1. Validates the AI tool is installed and required files exist (`prd.json`)
 2. Validates `prd.json` before the first cycle starts
 3. Archives previous run if the branch in `prd.json` changed
 4. Initializes `progress.txt` if it doesn't exist
 5. For each cycle:
    - Validates `prd.json` before the developer phase starts
-   - Copies `DEVELOPER.md` into the selected tool's runtime prompt file and runs a developer agent
+   - Loads `DEVELOPER.md` from the Ralph package templates into the selected tool's runtime prompt file and runs a developer agent; removes or restores the runtime prompt file afterward
    - Validates `prd.json` after the developer phase
-   - Copies `PLANNER.md` into the selected tool's runtime prompt file and runs a planner agent
+   - Loads `PLANNER.md` from the Ralph package templates into the selected tool's runtime prompt file and runs a planner agent; removes or restores the runtime prompt file afterward
    - Validates `prd.json` after the planner phase
    - The planner checks `finalSuccessCriteria` and either writes the next PRD slice or emits `<promise>COMPLETE</promise>`
 6. If max cycles are reached without completion, exits with error
@@ -178,7 +178,7 @@ ralph fix -d path/to/project
 
 Options:
 - `--tool <tool>` — AI tool to use (default: `claude`)
-- `-d, --dir <path>` — Project directory containing `DOCTOR.md` and `prd.json` (default: cwd)
+- `-d, --dir <path>` — Project directory containing `prd.json` (default: cwd)
 - `--bypass` / `--no-bypass` — Override bypass mode for Codex
 - `--auto-approve` / `--no-auto-approve` — Override Copilot auto-approval
 

@@ -13,19 +13,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
   log.header("Ralph Init");
   log.info(`Target directory: ${dir}`);
 
-  const promptFiles = ["DEVELOPER.md", "PLANNER.md", "DOCTOR.md"];
-  for (const promptFile of promptFiles) {
-    const src = join(templateDir, promptFile);
-    const dest = join(dir, promptFile);
-
-    if ((await fileExists(dest)) && !options.force) {
-      log.warn(`${promptFile} already exists. Use --force to overwrite.`);
-    } else {
-      await copyFileSafe(src, dest);
-      log.success(`Copied ${promptFile}`);
-    }
-  }
-
   // Copy prd.json.example
   const prdExampleSrc = join(templateDir, "prd.json.example");
   const prdExampleDest = join(dir, "prd.json.example");

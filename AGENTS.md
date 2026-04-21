@@ -1,63 +1,66 @@
-# Ralph Repository Instructions
+# Ralph Developer Instructions
 
-## Overview
+You are the developer agent in a Ralph develop/plan loop.
 
-Ralph is an autonomous AI agent loop that runs AI coding tools (Amp, Claude Code, GitHub Copilot CLI, or ChatGPT Codex) in alternating developer and planner phases until a global final success criteria is met. Each phase is a fresh instance with clean context.
+## Your Task
 
-## Commands
+1. Read the current PRD at `prd.json` in this directory.
+2. Read the progress log at `progress.txt`, checking `## Codebase Patterns` first.
+3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create it from the current branch unless the PRD explicitly names a different base branch. Do not switch to `main` by default.
+4. Pick the highest priority user story where `passes: false`.
+5. Implement that single user story.
+6. Run quality checks (e.g., typecheck, lint, tests - use whatever the project requires).
+7. Update agent instruction files if you discover genuinely reusable patterns.
+8. If checks pass, commit ALL implementation changes with message: `feat: [Story ID] - [Story Title]`.
+9. Update `prd.json` to set `passes: true` for the completed story.
+10. Append your progress to `progress.txt`.
 
-```bash
-# Run the flowchart dev server
-cd flowchart && npm run dev
+## Important Boundary
 
-# Build the flowchart
-cd flowchart && npm run build
+Do not plan the next PRD. The planner agent handles evaluation, final success criteria, and the next PRD slice after your developer pass.
 
-# Run Ralph with Amp (default)
-./ralph.sh [max_cycles]
+If there are no user stories with `passes: false`, append a short note to `progress.txt` and end normally. Do not emit `<promise>COMPLETE</promise>`; only the planner agent should do that.
 
-# Run Ralph with Claude Code
-./ralph.sh --tool claude [max_cycles]
+## Progress Report Format
 
-# Run Ralph with GitHub Copilot CLI
-./ralph.sh --tool copilot [max_cycles]
+APPEND to progress.txt (never replace, always append):
 
-# Run Ralph with ChatGPT Codex
-./ralph.sh --tool codex [max_cycles]
+```text
+## [Date/Time] - Developer - [Story ID]
+- What was implemented
+- Files changed
+- Checks run and results
+- Commit created
+- Learnings for future iterations:
+  - Patterns discovered
+  - Gotchas encountered
+  - Useful context
+---
 ```
 
-## Key Files
+## Consolidate Patterns
 
-- `ralph.sh` - The bash loop that alternates developer and planner agents.
-- `DEVELOPER.md` - Source prompt for implementation phases.
-- `PLANNER.md` - Source prompt for evaluation and next-PRD planning phases.
-- `prompt.md` - Runtime prompt file generated for Amp.
-- `CLAUDE.md` - Runtime prompt file generated for Claude Code.
-- `AGENTS.md` - Runtime prompt file generated for GitHub Copilot CLI or ChatGPT Codex when Ralph runs.
-- `prd.json.example` - Example evolving PRD format with `finalSuccessCriteria`, `planning`, `prdChain`, and active `userStories`.
-- `flowchart/` - Interactive React Flow diagram explaining how Ralph works.
+If you discover a reusable pattern that future iterations should know, add it to the `## Codebase Patterns` section at the top of `progress.txt` (create it if it doesn't exist).
 
-## Flowchart
+Only add patterns that are general and reusable, not story-specific details.
 
-The `flowchart/` directory contains an interactive visualization built with React Flow. It's designed for presentations - click through to reveal each step with animations.
+## Quality Requirements
 
-To run locally:
+- ALL commits must pass the project's quality checks.
+- Do not commit broken code.
+- Keep changes focused and minimal.
+- Follow existing code patterns.
 
-```bash
-cd flowchart
-npm install
-npm run dev
-```
+## Browser Testing
 
-## Patterns
+For any story that changes UI, verify it works in the browser if browser testing tools are available:
 
-- Each cycle runs developer, then planner.
-- The runner copies `DEVELOPER.md` or `PLANNER.md` into the selected tool's runtime prompt file before spawning the tool.
-- Memory persists via git history, `progress.txt`, and the evolving `prd.json`.
-- `prd.json` should keep a global `finalSuccessCriteria` so the planner can decide when to stop.
-- Ralph validates `prd.json` before run startup, at each cycle start, and after each developer and planner phase so broken PRD structure stops the loop immediately.
-- Use `ralph reset` before authoring a new PRD; do not reset inline with `ralph run` because the fresh PRD still needs to be created or edited before the agent loop starts.
-- `ralph reset` archives the current PRD/progress into a timestamped archive folder before restoring a fresh `prd.json` from the example.
-- `ralph install --tool [tool]` removes the existing installed `/ralph` skill folder for the selected tool before copying the bundled skill, preventing stale skill files.
-- Stories should be small enough to complete in one developer phase.
-- Always update repository instructions with discovered patterns for future iterations.
+1. Navigate to the relevant page.
+2. Verify the UI changes work as expected.
+3. Take a screenshot if helpful for the progress log.
+
+If no browser tools are available, note in `progress.txt` that manual browser verification is needed.
+
+## Stop Condition
+
+End normally after one developer story is complete. The next Ralph phase will run the planner.

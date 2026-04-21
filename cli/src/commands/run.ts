@@ -1,6 +1,6 @@
 import { resolve, join } from "path";
 import { log } from "../utils/log.js";
-import { fileExists, readText, writeText, copyFileSafe } from "../utils/files.js";
+import { fileExists, readText, writeText, getPackageDir, removePathIfExists } from "../utils/files.js";
 import { exec, commandExists } from "../utils/exec.js";
 import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
@@ -105,19 +105,19 @@ export async function runCommand(
   const prdPath = join(dir, "prd.json");
   const progressPath = join(dir, "progress.txt");
   const lastBranchPath = join(dir, ".last-branch");
+  const templateDir = join(getPackageDir(), "templates");
   const phasePrompts = {} as Record<Phase, string>;
 
   for (const [phase, promptFile] of Object.entries(PHASE_PROMPTS) as [
     Phase,
     string
   ][]) {
-    const promptPath = join(dir, promptFile);
-    if (!(await fileExists(promptPath))) {
-      log.error(`${promptFile} not found in ${dir}`);
-      log.info('Run "ralph init" first to set up the project.');
+    const templatePath = join(templateDir, promptFile);
+    if (!(await fileExists(templatePath))) {
+      log.error(`Template ${promptFile} not found in Ralph package at ${templatePath}`);
       process.exit(1);
     }
-    phasePrompts[phase] = await readText(promptPath);
+    phasePrompts[phase] = await readText(templatePath);
   }
 
   if (!(await fileExists(prdPath))) {
@@ -257,6 +257,7 @@ export async function runCommand(
  * Run a single phase — write the source phase prompt to the tool's expected
  * runtime prompt file, then spawn the AI tool with that prompt piped to stdin.
  * Streams output to the terminal in real-time and returns the full output.
+ * Cleans up or restores the runtime prompt file after execution.
  */
 async function runPhase(
   tool: Tool,
@@ -270,24 +271,33 @@ async function runPhase(
   const toolConfig = TOOL_CONFIG[tool];
   const runtimePromptPath = join(dir, toolConfig.runtimePromptFile);
 
+  const previousContent = (await fileExists(runtimePromptPath))
+    ? await readText(runtimePromptPath)
+    : null;
+
   await writeText(runtimePromptPath, prompt);
   log.info(`Loaded ${PHASE_PROMPTS[phase]} into ${toolConfig.runtimePromptFile}`);
 
-  const result = await exec(
-    toolConfig.binary,
-    toolConfig.args(dangerouslySkipPermissions, bypass),
-    {
-      cwd: dir,
-      stdin: tool === "copilot" ? undefined : prompt,
-      autoApprove:
-        tool === "copilot"
-          ? {
-              enabled: copilotAutoApprove,
-              label: "Copilot",
-            }
-          : undefined,
-    }
-  );
+  let result: { stdout: string; stderr: string };
+  try {
+    result = await exec(
+      toolConfig.binary,
+      toolConfig.args(dangerouslySkipPermissions, bypass),
+      {
+        cwd: dir,
+        stdin: tool === "copilot" ? undefined : prompt,
+        autoApprove:
+          tool === "copilot"
+            ? {
+                enabled: copilotAutoApprove,
+                label: "Copilot",
+              }
+            : undefined,
+      }
+    );
+  } finally {
+    await restoreOrRemovePromptFile(runtimePromptPath, previousContent);
+  }
 
   return result.stdout + result.stderr;
 }
@@ -353,4 +363,19 @@ function stripAnsi(text: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * After a phase, restore the runtime prompt file to its previous content
+ * (if it existed before) or delete it (if Ralph created it).
+ */
+async function restoreOrRemovePromptFile(
+  runtimePromptPath: string,
+  previousContent: string | null
+): Promise<void> {
+  if (previousContent !== null) {
+    await writeText(runtimePromptPath, previousContent);
+  } else {
+    await removePathIfExists(runtimePromptPath);
+  }
 }
