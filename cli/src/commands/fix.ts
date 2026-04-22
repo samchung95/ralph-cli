@@ -5,6 +5,7 @@ import { exec, commandExists } from "../utils/exec.js";
 import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
 import { validatePrdFile } from "../utils/prd.js";
+import { cleanupStaleRalphArtifacts } from "../utils/ralph-artifacts.js";
 import type { FixOptions, Tool } from "../types.js";
 
 const DOCTOR_PROMPT_FILE = "DOCTOR.md";
@@ -49,11 +50,12 @@ const TOOL_CONFIG: Record<Tool, ToolConfig> = {
 };
 
 /**
- * `ralph fix` — Single-pass PRD doctor flow.
+ * `ralph fix` — Safe stale-artifact cleanup plus single-pass PRD doctor flow.
  *
- * Detects current prd.json validation errors, injects them into the DOCTOR.md
- * prompt, invokes the selected AI tool once, then revalidates. Exits cleanly
- * without invoking the AI tool if prd.json is already valid.
+ * Cleans safe stale Ralph root artifacts, then detects current prd.json
+ * validation errors, injects them into the DOCTOR.md prompt, invokes the
+ * selected AI tool once, and revalidates. Exits cleanly without invoking the
+ * AI tool if cleanup is the only work needed.
  */
 export async function fixCommand(options: FixOptions): Promise<void> {
   const tool = normalizeTool(options.tool);
@@ -69,14 +71,6 @@ export async function fixCommand(options: FixOptions): Promise<void> {
 
   const toolConfig = TOOL_CONFIG[tool];
 
-  // ── Validate tool is installed ──────────────────────────────────────────
-  if (!(await commandExists(toolConfig.binary))) {
-    log.error(
-      `${toolConfig.binary} is not installed or not on PATH. Install it first.`
-    );
-    process.exit(1);
-  }
-
   // ── Validate prd.json exists ───────────────────────────────────────────
   const prdPath = join(dir, "prd.json");
   if (!(await fileExists(prdPath))) {
@@ -84,20 +78,7 @@ export async function fixCommand(options: FixOptions): Promise<void> {
     process.exit(1);
   }
 
-  log.header("Ralph Fix — PRD Doctor");
-
-  // ── Run initial validation ─────────────────────────────────────────────
-  const initial = await validatePrdFile(prdPath);
-
-  if (initial.valid) {
-    log.success("prd.json is already valid. No doctor pass needed.");
-    return;
-  }
-
-  log.warn(`prd.json has ${initial.errors.length} validation error(s):`);
-  for (const err of initial.errors) {
-    log.step(err);
-  }
+  log.header("Ralph Fix — Cleanup + PRD Doctor");
 
   // ── Load DOCTOR.md from Ralph package templates ────────────────────────
   const templateDir = join(getPackageDir(), "templates");
@@ -107,6 +88,49 @@ export async function fixCommand(options: FixOptions): Promise<void> {
     process.exit(1);
   }
   const doctorPrompt = await readText(doctorTemplatePath);
+
+  // ── Run initial validation and stale-artifact cleanup ──────────────────
+  const initial = await validatePrdFile(prdPath);
+  const doctorRuntimePrompt = initial.valid
+    ? undefined
+    : `${doctorPrompt}\n\n${buildErrorBlock(initial.errors)}`;
+  const cleanup = await cleanupStaleRalphArtifacts({
+    dir,
+    templateDir,
+    doctorRuntimePrompt,
+  });
+
+  for (const artifact of cleanup.removed) {
+    log.success(`Removed stale Ralph artifact: ${artifact}`);
+  }
+  for (const artifact of cleanup.preserved) {
+    log.warn(
+      `Preserved ${artifact} because it does not exactly match a known Ralph-generated version.`
+    );
+  }
+
+  if (initial.valid) {
+    if (cleanup.removed.length === 0 && cleanup.preserved.length === 0) {
+      log.success("prd.json is already valid. No doctor pass needed.");
+      return;
+    }
+
+    log.success("Stale Ralph artifact cleanup complete. No doctor pass needed.");
+    return;
+  }
+
+  log.warn(`prd.json has ${initial.errors.length} validation error(s):`);
+  for (const err of initial.errors) {
+    log.step(err);
+  }
+
+  // ── Validate tool is installed ──────────────────────────────────────────
+  if (!(await commandExists(toolConfig.binary))) {
+    log.error(
+      `${toolConfig.binary} is not installed or not on PATH. Install it first.`
+    );
+    process.exit(1);
+  }
 
   // ── Build doctor prompt with injected errors ───────────────────────────
   const errorBlock = buildErrorBlock(initial.errors);

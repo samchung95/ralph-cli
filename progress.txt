@@ -6,6 +6,7 @@ Started: 2026-04-21T22:54+08:00
 - `getPackageDir()` in `cli/src/utils/files.ts` returns the Ralph package root (one level up from `dist/index.js`). Use `join(getPackageDir(), "templates")` to locate bundled templates at runtime.
 - Runtime prompt cleanup pattern: before writing a tool's runtime prompt file, read and store its existing content (or null if absent). In a `finally` block, restore the previous content or delete the file if Ralph created it.
 - `removePathIfExists` is already available from `cli/src/utils/files.ts`; use it for safe file deletion.
+- For safe stale-artifact cleanup, compare normalized content hashes against known bundled template/runtime hashes instead of deleting by filename alone. This preserves user-customized files that happen to share Ralph artifact names.
 
 ## Setup - Cycle 1
 - Created initial evolving prd.json for transient runtime prompts sourced from the Ralph dependency
@@ -39,4 +40,32 @@ Started: 2026-04-21T22:54+08:00
 - Evidence reviewed: prd.json had been partially written and malformed at line 53; git history shows US-001 implementation commit 99c022c; current run/fix/init source confirms prompts now load from package templates and init no longer copies phase prompts.
 - Next PRD slice planned: Cycle 2 — US-002 "Safely clean stale Ralph root artifacts". ralph fix should remove exact-match known Ralph-generated artifacts, preserve modified files, and still run the existing doctor pass when prd.json validation errors exist.
 - Files changed: prd.json, progress.txt
+---
+
+## 2026-04-22T11:51+08:00 - Developer - US-002
+- What was implemented:
+  - Added normalized-hash-based stale artifact matching for `DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, `prd.json.example`, `prompt.md`, `CLAUDE.md`, and `AGENTS.md`, including known historical template hashes.
+  - Updated `ralph fix` to clean exact-match stale artifacts before any doctor pass, preserve mismatched files with warnings, and skip tool installation/invocation entirely when cleanup is the only work needed.
+  - Updated `ralph init`, CLI help text, and README docs so init no longer installs `prd.json.example` into the project root and fix documents exact-match cleanup behavior.
+- Files changed:
+  - cli/src/utils/ralph-artifacts.ts
+  - cli/src/commands/fix.ts
+  - cli/src/commands/init.ts
+  - cli/src/index.ts
+  - cli/README.md
+  - README.md
+  - prd.json
+  - progress.txt
+- Checks run and results:
+  - `npm run typecheck` in `cli/` -> exit 0
+  - `npm run build` in `cli/` -> exit 0
+  - Manual CLI verification with temporary directories confirmed: `ralph init` now creates only `progress.txt`; `ralph fix` removes exact-match stale artifacts while preserving modified files; valid `prd.json` plus stale artifacts exits without a doctor pass; invalid `prd.json` plus stale artifacts still performs one doctor pass and leaves no runtime prompt behind
+- Commit created: feat: US-002 - Safely clean stale Ralph root artifacts
+- Learnings for future iterations:
+  - Patterns discovered
+    - Normalized content hashes are a clean way to recognize safe-to-delete Ralph artifacts across template revisions without risking customized files
+  - Gotchas encountered
+    - `ralph fix` must defer tool-install checks until after cleanup so valid PRDs can be cleaned even when no AI binary is installed
+  - Useful context
+    - `ralph reset` already falls back to the bundled `prd.json.example`, so `ralph init` can stop copying the example without breaking reset
 ---

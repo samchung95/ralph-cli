@@ -32,7 +32,7 @@ program
 program
   .command("init")
   .description(
-    "Initialize Ralph in a project (copies phase prompts and prd.json.example into the project root)"
+    "Initialize Ralph in a project (creates progress.txt; PRD template stays bundled)"
   )
   .option("-d, --dir <path>", "Target project directory", process.cwd())
   .option("--force", "Overwrite existing files", false)
@@ -94,7 +94,7 @@ program
     "Disable Copilot auto-approval for this run",
     undefined
   )
-  .option("-d, --dir <path>", "Project directory containing DEVELOPER.md, PLANNER.md, and prd.json", process.cwd())
+  .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
   .action(runCommand);
 
 program
@@ -121,13 +121,13 @@ program
 
 program
   .command("fix")
-  .description("Run a single PRD doctor pass to repair an invalid prd.json")
+  .description("Clean stale Ralph artifacts and repair an invalid prd.json in one doctor pass")
   .option(
     "--tool <tool>",
     `AI tool to use (${TOOL_NAMES})`,
     "claude"
   )
-  .option("-d, --dir <path>", "Project directory containing DOCTOR.md and prd.json", process.cwd())
+  .option("-d, --dir <path>", "Project directory containing prd.json", process.cwd())
   .option(
     "--bypass",
     "Use bypass mode for this run (Codex uses full access)",

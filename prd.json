@@ -61,8 +61,8 @@
       ],
       "priority": 1,
       "storyPriority": "high",
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented exact-match stale artifact cleanup in ralph fix, removed prd.json.example from init, and updated CLI/docs to describe cleanup and preserved-file behavior."
     }
   ]
 }

@@ -41,12 +41,7 @@ cd your-project
 ralph init
 ```
 
-This creates:
-
-- `DEVELOPER.md`
-- `PLANNER.md`
-- `prd.json.example`
-- `progress.txt`
+This creates `progress.txt`. Ralph keeps `DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, and `prd.json.example` bundled in the installed package instead of copying them into your project root.
 
 Install the `/ralph` setup skill into your AI tool:
 
@@ -199,6 +194,7 @@ ralph run --dangerously-skip-permissions 15
 # Optional helpers
 ralph validate
 ralph reset
+ralph fix
 ```
 
 With the copied shell script:
@@ -349,7 +345,7 @@ git log --oneline -10
 
 ## Customizing the Prompt
 
-After copying `DEVELOPER.md` and `PLANNER.md` to your project, customize them for your project:
+If you're using the copied shell script with project-local `DEVELOPER.md` and `PLANNER.md`, customize them for your project:
 - Add project-specific quality check commands
 - Include codebase conventions
 - Add common gotchas for your stack

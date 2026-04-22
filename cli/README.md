@@ -48,14 +48,14 @@ ralph run --tool codex --bypass
 # Optional helpers
 ralph validate             # Check prd.json structure
 ralph reset                # Archive current run and restore fresh prd.json
-ralph fix                  # Repair a broken prd.json in one doctor pass
+ralph fix                  # Clean stale Ralph artifacts and repair prd.json when needed
 ```
 
 ## Commands
 
 ### `ralph init`
 
-Creates `prd.json.example` and `progress.txt` in your project root so you can author a PRD and start Ralph. Phase prompt files (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`) are loaded from the Ralph package at runtime and no longer need to be kept in your project.
+Creates `progress.txt` in your project root so you can track Ralph iterations. Phase prompt files (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`) and `prd.json.example` stay bundled in the Ralph package, so they no longer need to live in your project root.
 
 ```bash
 cd your-project
@@ -166,7 +166,7 @@ ralph reset -d path/to/project
 
 ### `ralph fix`
 
-Runs a single PRD doctor pass to repair a broken `prd.json`. Before invoking the AI tool, it detects current validation errors and injects them into the `DOCTOR.md` prompt. If `prd.json` is already valid, it exits cleanly without calling the AI tool.
+First cleans stale Ralph-generated root artifacts (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, `prd.json.example`, `prompt.md`, `CLAUDE.md`, and `AGENTS.md`) when their normalized contents exactly match a known Ralph-generated version. Files with the same names but different contents are preserved and reported. If `prd.json` is still invalid after cleanup, Ralph injects the current validation errors into the bundled `DOCTOR.md` prompt and runs a single doctor pass. If `prd.json` is already valid, `ralph fix` exits after cleanup without calling the AI tool.
 
 ```bash
 ralph fix                       # Claude Code (default)
