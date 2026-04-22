@@ -2,9 +2,41 @@
 Started: 2026-04-21T22:54+08:00
 ---
 
+## Codebase Patterns
+- `getPackageDir()` in `cli/src/utils/files.ts` returns the Ralph package root (one level up from `dist/index.js`). Use `join(getPackageDir(), "templates")` to locate bundled templates at runtime.
+- Runtime prompt cleanup pattern: before writing a tool's runtime prompt file, read and store its existing content (or null if absent). In a `finally` block, restore the previous content or delete the file if Ralph created it.
+- `removePathIfExists` is already available from `cli/src/utils/files.ts`; use it for safe file deletion.
+
 ## Setup - Cycle 1
 - Created initial evolving prd.json for transient runtime prompts sourced from the Ralph dependency
 - Final success criteria: ralph init no longer installs phase prompt files; run/fix load DEVELOPER.md, PLANNER.md, and DOCTOR.md from package templates, materialize only tool runtime prompts during execution, and clean up or restore those runtime files afterward
 - First developer objective: Update init, run, and fix to remove target-project prompt requirements while preserving doctor error injection and adding runtime prompt cleanup/restoration
 - Archived previous completed run to archive/2026-04-21-prd-doctor-fix
+---
+
+## 2026-04-21T23:00+08:00 - Developer - US-001
+- What was implemented:
+  - `init.ts`: Removed copying of DEVELOPER.md, PLANNER.md, DOCTOR.md; init now only creates prd.json.example and progress.txt
+  - `run.ts`: Loads DEVELOPER.md/PLANNER.md from `join(getPackageDir(), "templates")` instead of target project; removed required-file checks for phase prompt files; added cleanup/restoration of runtime prompt file after each phase via try/finally
+  - `fix.ts`: Loads DOCTOR.md from `join(getPackageDir(), "templates")` instead of target project; removed DOCTOR.md required-file check; preserved error injection; added cleanup/restoration of runtime prompt file after doctor pass via try/finally
+  - `cli/README.md`: Updated ralph init description, ralph run file requirements, ralph fix --dir description, and "What Happens During ralph run" section
+- Files changed:
+  - cli/src/commands/init.ts
+  - cli/src/commands/run.ts
+  - cli/src/commands/fix.ts
+  - cli/README.md
+- Checks run and results:
+  - `npm run typecheck` in cli/ → exit 0 ✓
+- Commit created: feat: US-001 - Use transient runtime prompts from package templates (99c022c)
+- Learnings for future iterations:
+  - Stray runtime files (CLAUDE.md, prd.json.tmp) in repo root from prior ralph runs can get picked up by `git add -A`; use `git add` with explicit paths or add these to .gitignore
+  - The try/finally cleanup pattern is clean and handles both success and error paths in the AI tool execution
+---
+
+## 2026-04-22T11:41+08:00 - Planner - Cycle 1
+- Current PRD status: US-001 passes=true based on the developer entry and commit 99c022c; dependency-sourced transient runtime prompts are implemented.
+- Final success criteria status: NOT met after user scope expansion. The overall outcome now also needs safe stale-artifact cleanup for root Ralph-generated files such as DEVELOPER.md, PLANNER.md, DOCTOR.md, prd.json.example, prompt.md, CLAUDE.md, and AGENTS.md.
+- Evidence reviewed: prd.json had been partially written and malformed at line 53; git history shows US-001 implementation commit 99c022c; current run/fix/init source confirms prompts now load from package templates and init no longer copies phase prompts.
+- Next PRD slice planned: Cycle 2 — US-002 "Safely clean stale Ralph root artifacts". ralph fix should remove exact-match known Ralph-generated artifacts, preserve modified files, and still run the existing doctor pass when prd.json validation errors exist.
+- Files changed: prd.json, progress.txt
 ---
