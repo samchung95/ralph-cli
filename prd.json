@@ -19,8 +19,8 @@
       "Typecheck passes",
       "Manual CLI verification demonstrates init omits root artifacts, run/fix clean up or restore runtime prompt files, and fix removes only exact-match stale artifacts while preserving modified files"
     ],
-    "passes": false,
-    "notes": "Cycle 1 completed the dependency-sourced transient runtime prompt behavior. Cycle 2 expands the overall fix scope to safe stale-artifact cleanup."
+    "passes": true,
+    "notes": "Final criteria satisfied across cycles 1-2: init no longer copies phase prompt/example artifacts into project roots, run/fix load bundled templates and restore or remove runtime prompt files, fix performs exact-match stale artifact cleanup while preserving modified files, and docs/help were updated. Evidence reviewed: commits 99c022c and 4fa6516 plus current source/docs and cli typecheck/build passing."
   },
   "planning": {
     "cycle": 2,
@@ -37,9 +37,9 @@
     {
       "cycle": 2,
       "objective": "Safely remove stale Ralph-generated root artifacts",
-      "status": "active",
+      "status": "complete",
       "storyIds": ["US-002"],
-      "notes": ""
+      "notes": "US-002 passed: exact-match stale artifact cleanup landed in ralph fix, init stopped copying prd.json.example, and CLI/docs now describe cleanup and preserved-file behavior."
     }
   ],
   "userStories": [

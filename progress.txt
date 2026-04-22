@@ -66,6 +66,14 @@ Started: 2026-04-21T22:54+08:00
     - Normalized content hashes are a clean way to recognize safe-to-delete Ralph artifacts across template revisions without risking customized files
   - Gotchas encountered
     - `ralph fix` must defer tool-install checks until after cleanup so valid PRDs can be cleaned even when no AI binary is installed
-  - Useful context
-    - `ralph reset` already falls back to the bundled `prd.json.example`, so `ralph init` can stop copying the example without breaking reset
+- Useful context
+  - `ralph reset` already falls back to the bundled `prd.json.example`, so `ralph init` can stop copying the example without breaking reset
+---
+
+## 2026-04-22T11:52+08:00 - Planner - Cycle 2
+- Current PRD status: US-002 passes=true and the active slice is complete; no further user stories are needed for this feature.
+- Final success criteria status: PASS. The full cleanup flow is now in place across init, run, and fix.
+- Evidence reviewed: commits 99c022c and 4fa6516; current `cli/src/commands/run.ts`, `cli/src/commands/fix.ts`, `cli/src/utils/ralph-artifacts.ts`, `cli/README.md`, and `README.md`; `npm run typecheck` and `npm run build` in `cli/` both exit 0.
+- Completion evidence: init no longer copies phase prompt/example artifacts, run/fix use bundled templates with runtime prompt cleanup/restoration, and fix safely removes only exact-match stale root artifacts while preserving modified files.
+- Files changed: prd.json, progress.txt
 ---
