@@ -25,7 +25,7 @@ const program = new Command();
 program
   .name("ralph")
   .description(
-    "Ralph - Autonomous AI agent loop that alternates developer and planner phases until final success criteria pass"
+    "Ralph - Autonomous planner-routed AI agent loop that runs focused agent handoffs until final success criteria pass"
   )
   .version(pkg.version);
 

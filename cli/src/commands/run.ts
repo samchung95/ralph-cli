@@ -6,15 +6,27 @@ import { readConfig } from "../utils/config.js";
 import { normalizeTool, TOOL_NAMES } from "../types.js";
 import { archiveLabelFromBranch, archiveRunFiles } from "../utils/archive.js";
 import { validatePrdFile } from "../utils/prd.js";
+import { initialProgressText } from "../utils/progress.js";
 import type { RunOptions, Tool } from "../types.js";
 
 const COMPLETION_SIGNAL = "<promise>COMPLETE</promise>";
-type Phase = "developer" | "planner";
-
-const PHASE_PROMPTS: Record<Phase, string> = {
+const PROGRESS_INSTRUCTIONS_PROMPT = "PROGRESS_INSTRUCT.md";
+const AGENT_PROMPTS = {
   developer: "DEVELOPER.md",
+  uxui: "UXUI.md",
+  documentation: "DOCUMENTATION.md",
+  WEB_BROWSER_SAFE: "WEB_BROWSER_SAFE.md",
+  WEB_BROWSER_BYPASS: "WEB_BROWSER_BYPASS.md",
+} as const;
+const ROLE_PROMPTS = {
   planner: "PLANNER.md",
-};
+  ...AGENT_PROMPTS,
+} as const;
+
+type AgentRole = keyof typeof AGENT_PROMPTS;
+type RunRole = keyof typeof ROLE_PROMPTS;
+
+const AGENT_ROLE_NAMES = Object.keys(AGENT_PROMPTS) as AgentRole[];
 
 interface ToolConfig {
   binary: string;
@@ -64,9 +76,12 @@ const TOOL_CONFIG: Record<Tool, ToolConfig> = {
 /**
  * `ralph run [cycles]` — TypeScript port of ralph.sh.
  *
- * Spawns fresh AI tool instances in alternating developer/planner phases.
- * The phase source prompt is written to the tool-specific runtime prompt file
- * before each run. Loops until the planner emits the completion promise.
+ * Spawns fresh AI tool instances in a planner-routed role loop.
+ * Each cycle runs the planner first, then the agent selected in
+ * `planning.activeHandoff.agent`. The role prompt and shared progress
+ * instructions are written to the tool-specific runtime prompt file
+ * before each run. Loops until the planner completes the PRD's final success
+ * criteria, with the completion promise used as an additional explicit signal.
  */
 export async function runCommand(
   cycles: string,
@@ -106,10 +121,10 @@ export async function runCommand(
   const progressPath = join(dir, "progress.txt");
   const lastBranchPath = join(dir, ".last-branch");
   const templateDir = join(getPackageDir(), "templates");
-  const phasePrompts = {} as Record<Phase, string>;
+  const rolePrompts = {} as Record<RunRole, string>;
 
-  for (const [phase, promptFile] of Object.entries(PHASE_PROMPTS) as [
-    Phase,
+  for (const [role, promptFile] of Object.entries(ROLE_PROMPTS) as [
+    RunRole,
     string
   ][]) {
     const templatePath = join(templateDir, promptFile);
@@ -117,17 +132,32 @@ export async function runCommand(
       log.error(`Template ${promptFile} not found in Ralph package at ${templatePath}`);
       process.exit(1);
     }
-    phasePrompts[phase] = await readText(templatePath);
+    rolePrompts[role] = await readText(templatePath);
   }
+
+  const progressInstructionsPath = join(templateDir, PROGRESS_INSTRUCTIONS_PROMPT);
+  if (!(await fileExists(progressInstructionsPath))) {
+    log.error(
+      `Template ${PROGRESS_INSTRUCTIONS_PROMPT} not found in Ralph package at ${progressInstructionsPath}`
+    );
+    process.exit(1);
+  }
+  const progressInstructions = await readText(progressInstructionsPath);
 
   if (!(await fileExists(prdPath))) {
     log.error(`prd.json not found in ${dir}`);
-    log.info("Create a prd.json with finalSuccessCriteria and the first PRD slice.");
+    log.info("Create a prd.json with finalSuccessCriteria. The /ralph skill can scaffold it.");
     process.exit(1);
   }
 
   await warnIfMissingFinalSuccessCriteria(prdPath);
   await validatePrdOrExit(prdPath, "run startup");
+  if (await finalSuccessCriteriaPasses(prdPath)) {
+    console.log("");
+    log.success("Ralph final success criteria already pass!");
+    log.info("No develop/plan cycles needed.");
+    process.exit(0);
+  }
 
   // ── Archive previous run if branch changed ─────────────────────────────
   if (await fileExists(lastBranchPath)) {
@@ -145,10 +175,7 @@ export async function runCommand(
         log.info(`   Archived to: ${archiveDir}`);
 
         // Reset progress file for new run
-        await writeText(
-          progressPath,
-          `# Ralph Progress Log\nStarted: ${new Date()}\n---\n`
-        );
+        await writeText(progressPath, initialProgressText(await readProgressSeed(prdPath)));
       }
     } catch {
       // prd.json parse error — skip archiving
@@ -168,10 +195,7 @@ export async function runCommand(
 
   // ── Initialize progress file if it doesn't exist ──────────────────────
   if (!(await fileExists(progressPath))) {
-    await writeText(
-      progressPath,
-      `# Ralph Progress Log\nStarted: ${new Date()}\n---\n`
-    );
+    await writeText(progressPath, initialProgressText(await readProgressSeed(prdPath)));
   }
 
   // ── Run the loop ──────────────────────────────────────────────────────
@@ -194,35 +218,13 @@ export async function runCommand(
   for (let i = 1; i <= maxCycles; i++) {
     await validatePrdOrExit(prdPath, `cycle ${i} start`);
 
-    log.iteration(i, maxCycles, `${tool} developer`);
-
-    const developResult = await runPhase(
-      tool,
-      dir,
-      "developer",
-      phasePrompts.developer,
-      dangerouslySkipPermissions,
-      bypass,
-      copilotAutoApprove
-    );
-
-    if (hasCompletionSignalLine(developResult)) {
-      log.warn(
-        "Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
-      );
-    }
-
-    await validatePrdOrExit(prdPath, `developer phase ${i}`);
-
-    log.info(`Developer phase ${i} complete. Planning next...`);
-
     log.iteration(i, maxCycles, `${tool} planner`);
 
-    const planResult = await runPhase(
+    const planResult = await runRole(
       tool,
       dir,
       "planner",
-      phasePrompts.planner,
+      composePrompt(rolePrompts.planner, progressInstructions),
       dangerouslySkipPermissions,
       bypass,
       copilotAutoApprove
@@ -237,7 +239,30 @@ export async function runCommand(
       process.exit(0);
     }
 
-    log.info(`Planner phase ${i} complete. Continuing...`);
+    const selectedAgent = await readActiveHandoffAgentOrExit(prdPath);
+    log.info(`Planner selected ${selectedAgent}. Running assigned handoff...`);
+
+    log.iteration(i, maxCycles, `${tool} ${selectedAgent}`);
+
+    const agentResult = await runRole(
+      tool,
+      dir,
+      selectedAgent,
+      composePrompt(rolePrompts[selectedAgent], progressInstructions),
+      dangerouslySkipPermissions,
+      bypass,
+      copilotAutoApprove
+    );
+
+    if (hasCompletionSignalLine(agentResult)) {
+      log.warn(
+        `${selectedAgent} emitted the completion signal. Ignoring it; only the planner can complete Ralph.`
+      );
+    }
+
+    await validatePrdOrExit(prdPath, `${selectedAgent} phase ${i}`);
+
+    log.info(`${selectedAgent} phase ${i} complete. Returning to planner...`);
 
     // Small pause between cycles
     if (i < maxCycles) {
@@ -254,15 +279,15 @@ export async function runCommand(
 }
 
 /**
- * Run a single phase — write the source phase prompt to the tool's expected
+ * Run a single role — write the merged role prompt to the tool's expected
  * runtime prompt file, then spawn the AI tool with that prompt piped to stdin.
  * Streams output to the terminal in real-time and returns the full output.
  * Cleans up or restores the runtime prompt file after execution.
  */
-async function runPhase(
+async function runRole(
   tool: Tool,
   dir: string,
-  phase: Phase,
+  role: RunRole,
   prompt: string,
   dangerouslySkipPermissions: boolean,
   bypass: boolean,
@@ -276,7 +301,9 @@ async function runPhase(
     : null;
 
   await writeText(runtimePromptPath, prompt);
-  log.info(`Loaded ${PHASE_PROMPTS[phase]} into ${toolConfig.runtimePromptFile}`);
+  log.info(
+    `Loaded ${ROLE_PROMPTS[role]} + ${PROGRESS_INSTRUCTIONS_PROMPT} into ${toolConfig.runtimePromptFile}`
+  );
 
   let result: { stdout: string; stderr: string };
   try {
@@ -328,25 +355,106 @@ async function validatePrdOrExit(prdPath: string, context: string): Promise<void
   process.exit(1);
 }
 
-async function plannerCompleted(prdPath: string, output: string): Promise<boolean> {
-  if (!hasCompletionSignalLine(output)) {
-    return false;
+function composePrompt(rolePrompt: string, progressInstructions: string): string {
+  return `${rolePrompt.trimEnd()}\n\n---\n\n${progressInstructions.trimEnd()}\n`;
+}
+
+async function readActiveHandoffAgentOrExit(prdPath: string): Promise<AgentRole> {
+  try {
+    const prd = JSON.parse(await readText(prdPath)) as {
+      planning?: {
+        activeHandoff?: {
+          agent?: string;
+          status?: string;
+        };
+      };
+    };
+    const handoff = prd.planning?.activeHandoff;
+    const agent = handoff?.agent;
+    if (agent && isAgentRole(agent)) {
+      if (handoff?.status !== "ready" && handoff?.status !== "active") {
+        log.error(
+          `planning.activeHandoff.status must be "ready" or "active" before an agent can run; got "${handoff?.status ?? "missing"}".`
+        );
+        process.exit(1);
+      }
+      return agent;
+    }
+
+    log.error(
+      `Planner did not set planning.activeHandoff.agent to one of: ${AGENT_ROLE_NAMES.join(", ")}.`
+    );
+    process.exit(1);
+  } catch (error) {
+    log.error(
+      `Could not read planning.activeHandoff.agent from prd.json: ${error instanceof Error ? error.message : String(error)}`
+    );
+    process.exit(1);
   }
+}
+
+function isAgentRole(value: string): value is AgentRole {
+  return (AGENT_ROLE_NAMES as readonly string[]).includes(value);
+}
+
+async function plannerCompleted(prdPath: string, output: string): Promise<boolean> {
+  const emittedCompletionSignal = hasCompletionSignalLine(output);
 
   try {
     const prd = JSON.parse(await readText(prdPath));
     if (prd.finalSuccessCriteria?.passes === true) {
+      if (!emittedCompletionSignal) {
+        log.info(
+          "prd.json has finalSuccessCriteria.passes=true after the planner phase; completing even though the exact completion signal was not emitted."
+        );
+      }
       return true;
     }
 
-    log.warn(
-      "Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
-    );
+    if (emittedCompletionSignal) {
+      log.warn(
+        "Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
+      );
+    }
     return false;
   } catch {
-    log.warn(
-      "Planner emitted the completion signal, but prd.json could not be parsed afterward. Ignoring completion."
-    );
+    if (emittedCompletionSignal) {
+      log.warn(
+        "Planner emitted the completion signal, but prd.json could not be parsed afterward. Ignoring completion."
+      );
+    }
+    return false;
+  }
+}
+
+async function readProgressSeed(prdPath: string): Promise<{
+  goal?: string;
+  branch?: string;
+  cycle?: number;
+  currentObjective?: string;
+}> {
+  try {
+    const prd = JSON.parse(await readText(prdPath)) as {
+      branchName?: string;
+      finalSuccessCriteria?: { description?: string };
+      planning?: { cycle?: number; currentObjective?: string };
+    };
+    return {
+      goal: prd.finalSuccessCriteria?.description,
+      branch: prd.branchName,
+      cycle: prd.planning?.cycle,
+      currentObjective: prd.planning?.currentObjective,
+    };
+  } catch {
+    return {};
+  }
+}
+
+async function finalSuccessCriteriaPasses(prdPath: string): Promise<boolean> {
+  try {
+    const prd = JSON.parse(await readText(prdPath));
+    return prd.finalSuccessCriteria?.passes === true;
+  } catch {
     return false;
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "../utils/files.js";
 import { archiveLabelFromBranch, archiveRunFiles } from "../utils/archive.js";
 import { validatePrdFile } from "../utils/prd.js";
+import { initialProgressText } from "../utils/progress.js";
 import type { ResetOptions } from "../types.js";
 
 /**
@@ -58,7 +59,7 @@ export async function resetRalphState(
   }
 
   await copyFileSafe(examplePath, prdPath);
-  await writeText(progressPath, `# Ralph Progress Log\nStarted: ${new Date()}\n---\n`);
+  await writeText(progressPath, initialProgressText(await readProgressSeed(prdPath)));
   await removePathIfExists(lastBranchPath);
 
   const validation = await validatePrdFile(prdPath);
@@ -80,7 +81,7 @@ export async function resetRalphState(
 
   console.log("");
   log.info("Next steps:");
-  log.step("1. Update prd.json with the new feature's final success criteria and first slice");
+  log.step("1. Update prd.json with the new feature's final success criteria and planner context");
   log.step("2. Run `ralph validate` if you want a manual PRD shape check");
   log.step("3. Run `ralph run [cycles]` when the fresh PRD is ready");
 }
@@ -95,5 +96,28 @@ async function readBranchName(prdPath: string): Promise<string | undefined> {
     return prd.branchName;
   } catch {
     return undefined;
+  }
+}
+
+async function readProgressSeed(prdPath: string): Promise<{
+  goal?: string;
+  branch?: string;
+  cycle?: number;
+  currentObjective?: string;
+}> {
+  try {
+    const prd = JSON.parse(await readText(prdPath)) as {
+      branchName?: string;
+      finalSuccessCriteria?: { description?: string };
+      planning?: { cycle?: number; currentObjective?: string };
+    };
+    return {
+      goal: prd.finalSuccessCriteria?.description,
+      branch: prd.branchName,
+      cycle: prd.planning?.cycle,
+      currentObjective: prd.planning?.currentObjective,
+    };
+  } catch {
+    return {};
   }
 }

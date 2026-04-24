@@ -38,18 +38,20 @@ PRD_FILE="$SCRIPT_DIR/prd.json"
 PROGRESS_FILE="$SCRIPT_DIR/progress.txt"
 ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
-DEVELOPER_PROMPT="$SCRIPT_DIR/DEVELOPER.md"
 PLANNER_PROMPT="$SCRIPT_DIR/PLANNER.md"
+DEVELOPER_PROMPT="$SCRIPT_DIR/DEVELOPER.md"
+UXUI_PROMPT="$SCRIPT_DIR/UXUI.md"
+DOCUMENTATION_PROMPT="$SCRIPT_DIR/DOCUMENTATION.md"
+WEB_BROWSER_SAFE_PROMPT="$SCRIPT_DIR/WEB_BROWSER_SAFE.md"
+WEB_BROWSER_BYPASS_PROMPT="$SCRIPT_DIR/WEB_BROWSER_BYPASS.md"
+PROGRESS_INSTRUCT_PROMPT="$SCRIPT_DIR/PROGRESS_INSTRUCT.md"
 
-if [ ! -f "$DEVELOPER_PROMPT" ]; then
-  echo "Error: DEVELOPER.md not found in $SCRIPT_DIR"
-  exit 1
-fi
-
-if [ ! -f "$PLANNER_PROMPT" ]; then
-  echo "Error: PLANNER.md not found in $SCRIPT_DIR"
-  exit 1
-fi
+for prompt in "$PLANNER_PROMPT" "$DEVELOPER_PROMPT" "$UXUI_PROMPT" "$DOCUMENTATION_PROMPT" "$WEB_BROWSER_SAFE_PROMPT" "$WEB_BROWSER_BYPASS_PROMPT" "$PROGRESS_INSTRUCT_PROMPT"; do
+  if [ ! -f "$prompt" ]; then
+    echo "Error: $(basename "$prompt") not found in $SCRIPT_DIR"
+    exit 1
+  fi
+done
 
 if [ ! -f "$PRD_FILE" ]; then
   echo "Error: prd.json not found in $SCRIPT_DIR"
@@ -69,6 +71,41 @@ runtime_prompt_file() {
   else
     echo "$SCRIPT_DIR/AGENTS.md"
   fi
+}
+
+initial_progress_text() {
+  local goal
+  local branch
+  local cycle
+  local objective
+
+  goal=$(jq -r '.finalSuccessCriteria.description // "[one-line final success goal]"' "$PRD_FILE" 2>/dev/null || echo "[one-line final success goal]")
+  branch=$(jq -r '.branchName // "[branch]"' "$PRD_FILE" 2>/dev/null || echo "[branch]")
+  cycle=$(jq -r '.planning.cycle // 1' "$PRD_FILE" 2>/dev/null || echo "1")
+  objective=$(jq -r '.planning.currentObjective // "[planner selects first handoff]"' "$PRD_FILE" 2>/dev/null || echo "[planner selects first handoff]")
+
+  cat <<EOF
+# Ralph Progress
+
+Goal: $goal
+Branch: $branch
+Cycle: $cycle
+Status: planning
+Current agent: planner
+Current objective: $objective
+
+Next:
+- Planner selects the next focused handoff.
+
+Blockers:
+- none
+
+Important patterns:
+- none yet
+---
+
+Started: $(date)
+EOF
 }
 
 archive_label_from_branch() {
@@ -111,20 +148,36 @@ archive_run_files() {
   printf '%s\n' "$archive_dir"
 }
 
-run_phase() {
-  local phase="$1"
+prompt_file_for_role() {
+  local role="$1"
+  case "$role" in
+    planner) echo "$PLANNER_PROMPT" ;;
+    developer) echo "$DEVELOPER_PROMPT" ;;
+    uxui) echo "$UXUI_PROMPT" ;;
+    documentation) echo "$DOCUMENTATION_PROMPT" ;;
+    WEB_BROWSER_SAFE) echo "$WEB_BROWSER_SAFE_PROMPT" ;;
+    WEB_BROWSER_BYPASS) echo "$WEB_BROWSER_BYPASS_PROMPT" ;;
+    *)
+      echo "Error: Unknown Ralph role '$role'" >&2
+      return 1
+      ;;
+  esac
+}
+
+run_role() {
+  local role="$1"
   local source_prompt
   local runtime_prompt
 
-  if [[ "$phase" == "developer" ]]; then
-    source_prompt="$DEVELOPER_PROMPT"
-  else
-    source_prompt="$PLANNER_PROMPT"
-  fi
+  source_prompt="$(prompt_file_for_role "$role")"
 
   runtime_prompt="$(runtime_prompt_file)"
-  cp "$source_prompt" "$runtime_prompt"
-  echo "Loaded $(basename "$source_prompt") into $(basename "$runtime_prompt")" >&2
+  {
+    cat "$source_prompt"
+    printf '\n\n---\n\n'
+    cat "$PROGRESS_INSTRUCT_PROMPT"
+  } > "$runtime_prompt"
+  echo "Loaded $(basename "$source_prompt") + $(basename "$PROGRESS_INSTRUCT_PROMPT") into $(basename "$runtime_prompt")" >&2
 
   if [[ "$TOOL" == "amp" ]]; then
     amp --dangerously-allow-all < "$runtime_prompt" 2>&1 | tee /dev/stderr
@@ -144,16 +197,43 @@ has_completion_signal_line() {
 planner_completed() {
   local output="$1"
 
-  if ! has_completion_signal_line "$output"; then
-    return 1
-  fi
-
   if jq -e '.finalSuccessCriteria.passes == true' "$PRD_FILE" >/dev/null 2>&1; then
+    if ! has_completion_signal_line "$output"; then
+      echo "prd.json has finalSuccessCriteria.passes=true after the planner phase; completing even though the exact completion signal was not emitted."
+    fi
     return 0
   fi
 
-  echo "Warning: Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
+  if has_completion_signal_line "$output"; then
+    echo "Warning: Planner emitted the completion signal, but prd.json still has finalSuccessCriteria.passes != true. Ignoring completion."
+  fi
   return 1
+}
+
+final_success_criteria_passes() {
+  jq -e '.finalSuccessCriteria.passes == true' "$PRD_FILE" >/dev/null 2>&1
+}
+
+active_handoff_agent() {
+  jq -r '.planning.activeHandoff.agent // empty' "$PRD_FILE" 2>/dev/null
+}
+
+validate_selected_agent() {
+  local agent="$1"
+  local status
+
+  status=$(jq -r '.planning.activeHandoff.status // empty' "$PRD_FILE" 2>/dev/null)
+
+  if [[ "$agent" == "developer" || "$agent" == "uxui" || "$agent" == "documentation" || "$agent" == "WEB_BROWSER_SAFE" || "$agent" == "WEB_BROWSER_BYPASS" ]]; then
+    if [[ "$status" != "ready" && "$status" != "active" ]]; then
+      echo "Error: planning.activeHandoff.status must be ready or active before an agent can run; got '${status:-missing}'."
+      exit 1
+    fi
+    return 0
+  fi
+
+  echo "Error: Planner did not set planning.activeHandoff.agent to one of: developer, uxui, documentation, WEB_BROWSER_SAFE, WEB_BROWSER_BYPASS."
+  exit 1
 }
 
 validate_prd_json() {
@@ -172,6 +252,21 @@ validate_prd_json() {
     (.planning | type == "object") and
     (.planning.cycle | type == "number" and . >= 1 and floor == .) and
     (.planning.currentObjective | type == "string") and
+    (
+      (.planning.activeHandoff == null) or
+      (
+        (.planning.activeHandoff | type == "object") and
+        (.planning.activeHandoff.agent as $agent | ["developer", "uxui", "documentation", "WEB_BROWSER_SAFE", "WEB_BROWSER_BYPASS"] | index($agent) != null) and
+        (.planning.activeHandoff.objective | type == "string") and
+        (.planning.activeHandoff.scope | type == "object") and
+        (.planning.activeHandoff.scope.include | type == "array" and all(.[]; type == "string")) and
+        (.planning.activeHandoff.scope.exclude | type == "array" and all(.[]; type == "string")) and
+        (.planning.activeHandoff.rules | type == "array" and all(.[]; type == "string")) and
+        (.planning.activeHandoff.comments | type == "string") and
+        (.planning.activeHandoff.successCriteria | type == "array" and all(.[]; type == "string")) and
+        (.planning.activeHandoff.status as $status | ["ready", "active", "complete", "blocked"] | index($status) != null)
+      )
+    ) and
     (.prdChain | type == "array" and length >= 1) and
     (.userStories | type == "array") and
     (all(.prdChain[];
@@ -189,6 +284,7 @@ validate_prd_json() {
       (.description | type == "string") and
       (.acceptanceCriteria | type == "array" and all(.[]; type == "string")) and
       (.priority | type == "number" and . > 0) and
+      (.storyPriority as $priority | ["high", "medium", "low"] | index($priority) != null) and
       (.passes | type == "boolean") and
       (.notes | type == "string")
     )) and
@@ -215,9 +311,7 @@ if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then
     echo "   Archived to: $ARCHIVE_FOLDER"
     
     # Reset progress file for new run
-    echo "# Ralph Progress Log" > "$PROGRESS_FILE"
-    echo "Started: $(date)" >> "$PROGRESS_FILE"
-    echo "---" >> "$PROGRESS_FILE"
+    initial_progress_text > "$PROGRESS_FILE"
   fi
 fi
 
@@ -231,39 +325,28 @@ fi
 
 # Initialize progress file if it doesn't exist
 if [ ! -f "$PROGRESS_FILE" ]; then
-  echo "# Ralph Progress Log" > "$PROGRESS_FILE"
-  echo "Started: $(date)" >> "$PROGRESS_FILE"
-  echo "---" >> "$PROGRESS_FILE"
+  initial_progress_text > "$PROGRESS_FILE"
 fi
 
 echo "Starting Ralph - Tool: $TOOL - Max cycles: $MAX_CYCLES"
 
 validate_prd_json "run startup"
+if final_success_criteria_passes; then
+  echo ""
+  echo "Ralph final success criteria already pass!"
+  echo "No develop/plan cycles needed."
+  exit 0
+fi
 
 for i in $(seq 1 $MAX_CYCLES); do
   validate_prd_json "cycle $i start"
 
   echo ""
   echo "==============================================================="
-  echo "  Ralph Cycle $i of $MAX_CYCLES ($TOOL developer)"
-  echo "==============================================================="
-
-  OUTPUT=$(run_phase developer) || true
-  
-  if has_completion_signal_line "$OUTPUT"; then
-    echo "Warning: Developer phase emitted the completion signal. Ignoring it; only the planner can complete Ralph."
-  fi
-
-  validate_prd_json "developer phase $i"
-
-  echo "Developer phase $i complete. Planning next..."
-
-  echo ""
-  echo "==============================================================="
   echo "  Ralph Cycle $i of $MAX_CYCLES ($TOOL planner)"
   echo "==============================================================="
 
-  OUTPUT=$(run_phase planner) || true
+  OUTPUT=$(run_role planner) || true
 
   validate_prd_json "planner phase $i"
 
@@ -274,7 +357,25 @@ for i in $(seq 1 $MAX_CYCLES); do
     exit 0
   fi
 
-  echo "Planner phase $i complete. Continuing..."
+  SELECTED_AGENT=$(active_handoff_agent)
+  validate_selected_agent "$SELECTED_AGENT"
+
+  echo "Planner selected $SELECTED_AGENT. Running assigned handoff..."
+
+  echo ""
+  echo "==============================================================="
+  echo "  Ralph Cycle $i of $MAX_CYCLES ($TOOL $SELECTED_AGENT)"
+  echo "==============================================================="
+
+  OUTPUT=$(run_role "$SELECTED_AGENT") || true
+
+  if has_completion_signal_line "$OUTPUT"; then
+    echo "Warning: $SELECTED_AGENT emitted the completion signal. Ignoring it; only the planner can complete Ralph."
+  fi
+
+  validate_prd_json "$SELECTED_AGENT phase $i"
+
+  echo "$SELECTED_AGENT phase $i complete. Returning to planner..."
   sleep 2
 done
 

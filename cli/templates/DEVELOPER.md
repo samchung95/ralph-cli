@@ -1,66 +1,46 @@
-# Ralph Developer Instructions
+# Ralph Developer Agent Instructions
 
-You are the developer agent in a Ralph develop/plan loop.
+You are the developer agent in a Ralph planner-routed agent loop.
 
 ## Your Task
 
-1. Read the current PRD at `prd.json` in this directory.
-2. Read the progress log at `progress.txt`, checking `## Codebase Patterns` first.
-3. Check you're on the correct branch from PRD `branchName`. If not, check it out or create it from the current branch unless the PRD explicitly names a different base branch. Do not switch to `main` by default.
-4. Pick the highest priority user story where `passes: false`.
-5. Implement that single user story.
-6. Run quality checks (e.g., typecheck, lint, tests - use whatever the project requires).
-7. Update agent instruction files if you discover genuinely reusable patterns.
-8. If checks pass, commit ALL implementation changes with message: `feat: [Story ID] - [Story Title]`.
-9. Update `prd.json` to set `passes: true` for the completed story.
-10. Append your progress to `progress.txt`.
+1. Read `prd.json`, especially `planning.activeHandoff`.
+2. Read `progress.txt`, starting with the top state and recent entries.
+3. Confirm `planning.activeHandoff.agent` is `developer`. If not, append a short note to `progress.txt` and stop.
+4. Check you are on the branch from `branchName`. If not, check it out or create it from the current branch unless the PRD explicitly names a different base branch.
+5. Complete only the assigned handoff objective within its scope, rules, and success criteria.
+6. Implement focused product/source changes using existing codebase patterns.
+7. Run quality checks such as typecheck, lint, tests, or whichever checks the project requires.
+8. Update agent instruction files only if you discover genuinely reusable project patterns.
+9. Commit passing implementation changes with message: `feat: developer cycle [cycle] - [short objective]`.
+10. Update `planning.activeHandoff.status` to `complete` when the handoff success criteria pass, or `blocked` if they cannot be completed.
+11. If `userStories` are present and this handoff maps to a story, update the relevant story `passes` and `notes`.
+12. Append your progress using the shared progress instructions.
 
-## Important Boundary
+## Boundaries
 
-Do not plan the next PRD. The planner agent handles evaluation, final success criteria, and the next PRD slice after your developer pass.
-
-If there are no user stories with `passes: false`, append a short note to `progress.txt` and end normally. Do not emit `<promise>COMPLETE</promise>`; only the planner agent should do that.
-
-## Progress Report Format
-
-APPEND to progress.txt (never replace, always append):
-
-```text
-## [Date/Time] - Developer - [Story ID]
-- What was implemented
-- Files changed
-- Checks run and results
-- Commit created
-- Learnings for future iterations:
-  - Patterns discovered
-  - Gotchas encountered
-  - Useful context
----
-```
-
-## Consolidate Patterns
-
-If you discover a reusable pattern that future iterations should know, add it to the `## Codebase Patterns` section at the top of `progress.txt` (create it if it doesn't exist).
-
-Only add patterns that are general and reusable, not story-specific details.
+- Do not plan the next handoff. The planner owns routing, final success evaluation, and next-agent selection.
+- Do not emit `<promise>COMPLETE</promise>`; only the planner can complete Ralph.
+- Do not broaden scope beyond `planning.activeHandoff.scope`.
+- Do not commit broken code.
 
 ## Quality Requirements
 
-- ALL commits must pass the project's quality checks.
-- Do not commit broken code.
 - Keep changes focused and minimal.
 - Follow existing code patterns.
+- Record verification results in `progress.txt`.
+- If checks cannot be run, record why and what should be run next.
 
 ## Browser Testing
 
-For any story that changes UI, verify it works in the browser if browser testing tools are available:
+For any handoff that changes UI, verify it works in the browser if browser testing tools are available:
 
 1. Navigate to the relevant page.
 2. Verify the UI changes work as expected.
-3. Take a screenshot if helpful for the progress log.
+3. Record the browser verification result in `progress.txt`.
 
 If no browser tools are available, note in `progress.txt` that manual browser verification is needed.
 
 ## Stop Condition
 
-End normally after one developer story is complete. The next Ralph phase will run the planner.
+End normally after the assigned developer handoff is complete or blocked. The next Ralph phase will run the planner.

@@ -63,5 +63,5 @@ export async function installCommand(options: InstallOptions): Promise<void> {
   console.log("");
   log.info(`Skills installed to ${skillsDir}`);
   log.info("Available skill:");
-  log.step("/ralph — Set up the initial evolving prd.json and progress.txt");
+  log.step("/ralph — Expand the request and set up planner-routed prd.json/progress.txt");
 }

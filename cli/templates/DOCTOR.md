@@ -23,6 +23,16 @@ A valid `prd.json` must contain:
 - `planning` (object) with:
   - `cycle` (positive integer)
   - `currentObjective` (string)
+  - optional `activeHandoff` (object) with:
+    - `agent` (one of: `"developer"`, `"uxui"`, `"documentation"`, `"WEB_BROWSER_SAFE"`, `"WEB_BROWSER_BYPASS"`)
+    - `objective` (string)
+    - `scope` (object) with:
+      - `include` (array of strings)
+      - `exclude` (array of strings)
+    - `rules` (array of strings)
+    - `comments` (string)
+    - `successCriteria` (array of strings)
+    - `status` (one of: `"ready"`, `"active"`, `"complete"`, `"blocked"`)
 - `prdChain` (non-empty array of objects), each with:
   - `cycle` (positive integer)
   - `objective` (string)

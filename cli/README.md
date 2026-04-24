@@ -1,6 +1,6 @@
 # ralph-cli
 
-CLI tool for [Ralph](https://github.com/snarktank/ralph) — an autonomous AI agent loop that runs AI coding tools (Claude Code, Amp, GitHub Copilot CLI, or ChatGPT Codex) in alternating developer and planner phases until final success criteria are met.
+CLI tool for [Ralph](https://github.com/snarktank/ralph) — an autonomous planner-routed AI agent loop that runs AI coding tools (Claude Code, Amp, GitHub Copilot CLI, or ChatGPT Codex) until final success criteria are met.
 
 ## Install
 
@@ -36,7 +36,7 @@ ralph auto-approve on
 # 3. Ask your AI tool to set up the first evolving prd.json
 # "Use the /ralph skill to set up Ralph for [feature]"
 
-# 4. Run the develop/plan loop
+# 4. Run the planner-routed agent loop
 ralph run                  # Claude Code, 10 cycles
 ralph run 20               # Claude Code, 20 cycles
 ralph run --tool amp
@@ -55,7 +55,7 @@ ralph fix                  # Clean stale Ralph artifacts and repair prd.json whe
 
 ### `ralph init`
 
-Creates `progress.txt` in your project root so you can track Ralph iterations. Phase prompt files (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`) and `prd.json.example` stay bundled in the Ralph package, so they no longer need to live in your project root.
+Creates `progress.txt` in your project root so you can track Ralph iterations. Role prompt files (`PLANNER.md`, `DEVELOPER.md`, `UXUI.md`, `DOCUMENTATION.md`, `WEB_BROWSER_SAFE.md`, `WEB_BROWSER_BYPASS.md`, `DOCTOR.md`), `PROGRESS_INSTRUCT.md`, and `prd.json.example` stay bundled in the Ralph package, so they no longer need to live in your project root.
 
 ```bash
 cd your-project
@@ -78,7 +78,7 @@ ralph install --tool copilot
 ```
 
 After installing, you can use this skill in the selected AI tool:
-- `/ralph` — Set up the initial evolving `prd.json` and `progress.txt`
+- `/ralph` — Expand the request and set up planner-routed `prd.json` and `progress.txt`
 
 ### `ralph bypass [on|off|status]`
 
@@ -106,7 +106,7 @@ Copilot already runs with `--allow-all`, `--autopilot`, and `--no-ask-user`. If 
 
 ### `ralph run [cycles]`
 
-Runs the Ralph autonomous agent loop — a TypeScript port of `ralph.sh`. Each cycle runs a developer phase from `DEVELOPER.md`, then a planner phase from `PLANNER.md`. Ralph writes the active phase prompt into the selected tool's runtime prompt file before spawning the tool.
+Runs the Ralph autonomous agent loop. Each cycle runs the planner first from `PLANNER.md`; the planner writes `planning.activeHandoff`, then Ralph runs the selected role prompt (`DEVELOPER.md`, `UXUI.md`, `DOCUMENTATION.md`, `WEB_BROWSER_SAFE.md`, or `WEB_BROWSER_BYPASS.md`) merged with `PROGRESS_INSTRUCT.md`. Ralph writes the merged prompt into the selected tool's runtime prompt file before spawning the tool.
 
 ```bash
 ralph run                         # Claude Code, 10 cycles
@@ -135,12 +135,13 @@ Options:
 3. Archives previous run if the branch in `prd.json` changed
 4. Initializes `progress.txt` if it doesn't exist
 5. For each cycle:
-   - Validates `prd.json` before the developer phase starts
-   - Loads `DEVELOPER.md` from the Ralph package templates into the selected tool's runtime prompt file and runs a developer agent; removes or restores the runtime prompt file afterward
-   - Validates `prd.json` after the developer phase
-   - Loads `PLANNER.md` from the Ralph package templates into the selected tool's runtime prompt file and runs a planner agent; removes or restores the runtime prompt file afterward
+   - Validates `prd.json` before the planner phase starts
+   - Loads `PLANNER.md` plus `PROGRESS_INSTRUCT.md` and runs a planner agent
    - Validates `prd.json` after the planner phase
-   - The planner checks `finalSuccessCriteria` and either writes the next PRD slice or emits `<promise>COMPLETE</promise>`
+   - Stops if the planner marks `finalSuccessCriteria.passes: true` or emits `<promise>COMPLETE</promise>` with passing criteria
+   - Reads `planning.activeHandoff.agent`
+   - Loads the selected role prompt plus `PROGRESS_INSTRUCT.md` and runs that agent
+   - Validates `prd.json` after the selected agent phase
 6. If max cycles are reached without completion, exits with error
 
 If an agent leaves the PRD in an invalid shape at any checkpoint, the run stops immediately instead of continuing with a broken plan state.
@@ -166,7 +167,7 @@ ralph reset -d path/to/project
 
 ### `ralph fix`
 
-First cleans stale Ralph-generated root artifacts (`DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, `prd.json.example`, `prompt.md`, `CLAUDE.md`, and `AGENTS.md`) when their normalized contents exactly match a known Ralph-generated version. Files with the same names but different contents are preserved and reported. If `prd.json` is still invalid after cleanup, Ralph injects the current validation errors into the bundled `DOCTOR.md` prompt and runs a single doctor pass. If `prd.json` is already valid, `ralph fix` exits after cleanup without calling the AI tool.
+First cleans stale Ralph-generated root artifacts (`PLANNER.md`, `DEVELOPER.md`, `UXUI.md`, `DOCUMENTATION.md`, `WEB_BROWSER_SAFE.md`, `WEB_BROWSER_BYPASS.md`, `DOCTOR.md`, `PROGRESS_INSTRUCT.md`, `prd.json.example`, `prompt.md`, `CLAUDE.md`, and `AGENTS.md`) when their normalized contents exactly match a known Ralph-generated version. Files with the same names but different contents are preserved and reported. If `prd.json` is still invalid after cleanup, Ralph injects the current validation errors into the bundled `DOCTOR.md` prompt and runs a single doctor pass. If `prd.json` is already valid, `ralph fix` exits after cleanup without calling the AI tool.
 
 ```bash
 ralph fix                       # Claude Code (default)
@@ -190,5 +191,15 @@ npm install
 npm run build      # Build with tsup
 npm run dev        # Build in watch mode
 npm run typecheck  # Type check only
+npm run token-count # Count Ralph prompt/template tokens
 npm install -g .   # Update the globally installed ralph command from this checkout
 ```
+
+Token counting supports live project files and context-limit percentages:
+
+```bash
+npm run token-count -- --dir .. --limit 200000
+npm run token-count -- --encoding cl100k_base --json
+```
+
+The report separates one composed runtime prompt per phase from the total size of all templates, because Ralph only injects one phase prompt at a time.

@@ -1,31 +1,83 @@
 {
   "project": "MyApp",
   "branchName": "ralph/task-priority",
-  "description": "Task Priority System - first evolving PRD slice",
+  "description": "Task Priority System - planner-routed Ralph run",
   "finalSuccessCriteria": {
-    "description": "Users can assign, view, edit, and filter task priority across the app, with priority persisted between sessions.",
+    "description": "Users can assign, view, edit, and filter task priority across the app, with priority persisted between sessions and documented where relevant.",
     "acceptanceCriteria": [
       "Tasks persist a priority value of high, medium, or low",
       "Users can see priority on task cards without opening details",
       "Users can edit priority from the task edit flow",
       "Users can filter the task list by priority",
-      "Typecheck passes",
-      "Relevant UI flows are verified in browser"
+      "Priority UI is visually scannable and verified in browser",
+      "Relevant usage documentation is updated",
+      "Typecheck passes"
     ],
     "passes": false,
     "notes": ""
   },
   "planning": {
     "cycle": 1,
-    "currentObjective": "Add the persisted priority field so later slices can build UI on top of it"
+    "currentObjective": "Planner selects the first focused handoff",
+    "promptExpansion": {
+      "intent": "Add an end-to-end task priority feature with persistence, usable UI, filtering, and relevant docs.",
+      "inScope": [
+        "Task priority persistence",
+        "Priority display and editing UI",
+        "Priority filtering",
+        "Relevant documentation"
+      ],
+      "outOfScope": [
+        "Unrelated task redesign",
+        "Authentication changes"
+      ],
+      "assumptions": [
+        "Existing task creation and edit flows should remain intact"
+      ],
+      "suggestedAgents": [
+        "developer",
+        "uxui",
+        "documentation"
+      ]
+    },
+    "activeHandoff": {
+      "agent": "developer",
+      "objective": "Add the persisted priority field so later handoffs can build UI on top of it",
+      "scope": {
+        "include": [
+          "Task priority data model",
+          "Default priority handling"
+        ],
+        "exclude": [
+          "Priority card UI",
+          "Priority filtering UI",
+          "Documentation updates"
+        ]
+      },
+      "rules": [
+        "Keep the change limited to persistence and model defaults",
+        "Follow existing migration and data access patterns",
+        "Run the project typecheck"
+      ],
+      "comments": "This first handoff establishes persisted priority before UX/UI and documentation work.",
+      "successCriteria": [
+        "Tasks can store a priority value of high, medium, or low",
+        "Existing and new tasks default to medium priority",
+        "Relevant migration or model update is added",
+        "Typecheck passes"
+      ],
+      "status": "ready"
+    }
   },
   "prdChain": [
     {
       "cycle": 1,
       "objective": "Persist task priority in the data model",
       "status": "active",
-      "storyIds": ["US-001"],
-      "notes": ""
+      "storyIds": [
+        "US-001"
+      ],
+      "notes": "Assigned to developer"
     }
   ],
   "userStories": [

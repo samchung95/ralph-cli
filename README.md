@@ -2,7 +2,7 @@
 
 ![Ralph](ralph.webp)
 
-Ralph is an autonomous AI agent loop that runs AI coding tools ([Amp](https://ampcode.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli), or [ChatGPT Codex](https://developers.openai.com/codex/cli)) in alternating developer and planner phases until a global final success criteria is met. Each phase is a fresh instance with clean context. Memory persists via git history, `progress.txt`, and the evolving `prd.json`.
+Ralph is an autonomous AI agent loop that runs AI coding tools ([Amp](https://ampcode.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli), or [ChatGPT Codex](https://developers.openai.com/codex/cli)) in a planner-routed loop until a global final success criteria is met. Each planner pass chooses the next focused agent handoff (`developer`, `uxui`, `documentation`, `WEB_BROWSER_SAFE`, or `WEB_BROWSER_BYPASS`). Each phase is a fresh instance with clean context. Memory persists via git history, `progress.txt`, and the evolving `prd.json`.
 
 Based on [Geoffrey Huntley's Ralph pattern](https://ghuntley.com/ralph/).
 
@@ -41,7 +41,7 @@ cd your-project
 ralph init
 ```
 
-This creates `progress.txt`. Ralph keeps `DEVELOPER.md`, `PLANNER.md`, `DOCTOR.md`, and `prd.json.example` bundled in the installed package instead of copying them into your project root.
+This creates `progress.txt`. Ralph keeps role prompts (`PLANNER.md`, `DEVELOPER.md`, `UXUI.md`, `DOCUMENTATION.md`, `WEB_BROWSER_SAFE.md`, `WEB_BROWSER_BYPASS.md`, `DOCTOR.md`), `PROGRESS_INSTRUCT.md`, and `prd.json.example` bundled in the installed package instead of copying them into your project root.
 
 Install the `/ralph` setup skill into your AI tool:
 
@@ -89,9 +89,14 @@ You can also copy the shell runner into a project:
 # From your project root
 mkdir -p scripts/ralph
 cp /path/to/ralph/ralph.sh scripts/ralph/
-cp /path/to/ralph/DEVELOPER.md scripts/ralph/DEVELOPER.md
-cp /path/to/ralph/PLANNER.md scripts/ralph/PLANNER.md
-cp /path/to/ralph/prd.json.example scripts/ralph/prd.json.example
+cp /path/to/ralph/cli/templates/PLANNER.md scripts/ralph/PLANNER.md
+cp /path/to/ralph/cli/templates/DEVELOPER.md scripts/ralph/DEVELOPER.md
+cp /path/to/ralph/cli/templates/UXUI.md scripts/ralph/UXUI.md
+cp /path/to/ralph/cli/templates/DOCUMENTATION.md scripts/ralph/DOCUMENTATION.md
+cp /path/to/ralph/cli/templates/WEB_BROWSER_SAFE.md scripts/ralph/WEB_BROWSER_SAFE.md
+cp /path/to/ralph/cli/templates/WEB_BROWSER_BYPASS.md scripts/ralph/WEB_BROWSER_BYPASS.md
+cp /path/to/ralph/cli/templates/PROGRESS_INSTRUCT.md scripts/ralph/PROGRESS_INSTRUCT.md
+cp /path/to/ralph/cli/templates/prd.json.example scripts/ralph/prd.json.example
 
 chmod +x scripts/ralph/ralph.sh
 ```
@@ -148,7 +153,7 @@ Add to `~/.config/amp/settings.json`:
 }
 ```
 
-This enables automatic handoff when context fills up, allowing Ralph to handle large stories that exceed a single context window.
+This enables automatic handoff when context fills up, allowing Ralph to handle large assignments that exceed a single context window.
 
 ## Workflow
 
@@ -160,7 +165,7 @@ Use the Ralph skill to create the initial evolving `prd.json`:
 Load the ralph skill and set up Ralph for [your feature description]
 ```
 
-Answer any clarifying questions. The skill creates `prd.json` with `finalSuccessCriteria`, a first small `userStories` slice, and a `prdChain`. The planner will evolve the next slice after each developer pass.
+Answer any clarifying questions. The skill expands your rough prompt into `finalSuccessCriteria`, planner context, and a compact `progress.txt`. Ralph starts with the planner, which writes `planning.activeHandoff` and chooses the first agent.
 
 ### 2. Run Ralph
 
@@ -217,15 +222,15 @@ Default is 10 cycles. Use `--tool amp`, `--tool claude`, `--tool copilot`, or `-
 
 Ralph will:
 1. Create a feature branch (from PRD `branchName`)
-2. Run a developer phase from `DEVELOPER.md`
-3. Implement the highest priority story where `passes: false`
-4. Commit if checks pass and mark the story complete in `prd.json`
-5. Run a planner phase from `PLANNER.md`
-6. Check `finalSuccessCriteria`
-7. If success criteria pass, output `<promise>COMPLETE</promise>`
-8. Otherwise, evolve `prd.json` with the next PRD slice and repeat
+2. Run a planner phase from `PLANNER.md`
+3. Let the planner check `finalSuccessCriteria`
+4. If success criteria pass, output `<promise>COMPLETE</promise>`
+5. Otherwise, write `planning.activeHandoff` with the selected agent, objective, scope, rules, comments, and handoff success criteria
+6. Run the selected role prompt (`DEVELOPER.md`, `UXUI.md`, `DOCUMENTATION.md`, `WEB_BROWSER_SAFE.md`, or `WEB_BROWSER_BYPASS.md`) merged with `PROGRESS_INSTRUCT.md`
+7. Let the selected agent complete or block the handoff and update `progress.txt`
+8. Return to the planner and repeat
 
-Ralph validates the `prd.json` structure before the run starts, at the start of every cycle, and after every developer and planner phase. If the agent leaves the PRD in an invalid state, the run stops immediately instead of continuing with a broken planning chain.
+Ralph validates the `prd.json` structure before the run starts, at the start of every cycle, and after every planner or selected-agent phase. If an agent leaves the PRD in an invalid state, the run stops immediately instead of continuing with a broken planning chain.
 
 Use these helper commands with the Node CLI:
 
@@ -247,14 +252,19 @@ npm install -g .
 | File | Purpose |
 |------|---------|
 | `ralph.sh` | The bash loop that spawns fresh AI instances (supports `--tool amp`, `--tool claude`, `--tool copilot`, or `--tool codex`) |
-| `DEVELOPER.md` | Source prompt for implementation phases |
-| `PLANNER.md` | Source prompt for evaluation and next-PRD planning phases |
+| `PLANNER.md` | Source prompt for evaluation, final success checks, and next-agent routing |
+| `DEVELOPER.md` | Source prompt for implementation handoffs |
+| `UXUI.md` | Source prompt for UX/UI handoffs |
+| `DOCUMENTATION.md` | Source prompt for documentation handoffs |
+| `WEB_BROWSER_SAFE.md` | Source prompt for read-only public web browsing handoffs |
+| `WEB_BROWSER_BYPASS.md` | Source prompt for authorized sign-in and form-submission browsing handoffs |
+| `PROGRESS_INSTRUCT.md` | Shared progress-writing instructions merged into every planner/agent prompt |
 | `prompt.md` | Runtime prompt file generated for Amp |
 | `CLAUDE.md` | Runtime prompt file generated for Claude Code |
 | `AGENTS.md` | Runtime prompt file generated for GitHub Copilot CLI and ChatGPT Codex |
-| `prd.json` | Evolving PRD chain with `finalSuccessCriteria`, active stories, and planning metadata |
+| `prd.json` | Evolving PRD chain with `finalSuccessCriteria`, active handoff, and planning metadata |
 | `prd.json.example` | Example evolving PRD format for reference |
-| `progress.txt` | Append-only learnings for future iterations |
+| `progress.txt` | Compact shared memory plus meaningful per-cycle notes for fresh agents |
 | `skills/ralph/` | Skill for setting up the initial evolving PRD chain (works with Amp, Claude Code, GitHub Copilot CLI, and ChatGPT Codex) |
 | `.claude-plugin/` | Plugin manifest for Claude Code marketplace discovery |
 | `flowchart/` | Interactive visualization of how Ralph works |
@@ -277,20 +287,20 @@ npm run dev
 
 ### Each Phase = Fresh Context
 
-Each developer or planner phase spawns a **new AI instance** (Amp, Claude Code, GitHub Copilot CLI, or ChatGPT Codex) with clean context. The only memory between phases is:
+Each planner or selected-agent phase spawns a **new AI instance** (Amp, Claude Code, GitHub Copilot CLI, or ChatGPT Codex) with clean context. The only memory between phases is:
 - Git history (commits from previous phases)
 - `progress.txt` (learnings and context)
-- `prd.json` (current slice, PRD chain, and final success criteria)
+- `prd.json` (active handoff, PRD chain, and final success criteria)
 
 ### Evolving PRDs
 
-Ralph no longer needs a fully preplanned backlog. The first `prd.json` contains a global `finalSuccessCriteria` and a small first slice. After each developer phase, the planner checks the work so far. If the final criteria are not met, it writes the next small PRD slice into `userStories` and records the chain in `prdChain`.
+Ralph no longer needs a fully preplanned backlog. The first `prd.json` contains a global `finalSuccessCriteria` and planner context expanded from the user's prompt. Each planner pass checks the work so far. If the final criteria are not met, it writes the next focused `planning.activeHandoff` and records the chain in `prdChain`.
 
-### Small Tasks
+### Small Handoffs
 
-Each PRD item should be small enough to complete in one context window. If a task is too big, the LLM runs out of context before finishing and produces poor code.
+Each handoff should be small enough to complete in one context window. If a task is too big, the LLM runs out of context before finishing and produces poor code.
 
-Right-sized stories:
+Right-sized handoffs:
 - Add a database column and migration
 - Add a UI component to an existing page
 - Update a server action with new logic
@@ -303,7 +313,7 @@ Too big (split these):
 
 ### Agent Instruction Updates Are Critical
 
-After each developer phase, Ralph can update relevant agent instruction files with learnings. This is key because AI coding tools automatically read these files, so future phases and future human developers benefit from discovered patterns, gotchas, and conventions.
+After each selected-agent phase, Ralph can update relevant agent instruction files with genuinely reusable learnings. This is key because AI coding tools automatically read these files, so future phases and future human developers benefit from discovered patterns, gotchas, and conventions.
 
 Examples of what to add to agent instruction files:
 - Patterns discovered ("this codebase uses X for Y")
@@ -317,9 +327,9 @@ Ralph only works if there are feedback loops:
 - Tests verify behavior
 - CI must stay green (broken code compounds across iterations)
 
-### Browser Verification for UI Stories
+### Browser Verification for UI Handoffs
 
-Frontend stories must include "Verify in browser using dev-browser skill" in acceptance criteria. Ralph will use the dev-browser skill to navigate to the page, interact with the UI, and confirm changes work.
+Frontend handoffs must include browser verification in `planning.activeHandoff.successCriteria`. Ralph will use available browser tooling to navigate to the page, interact with the UI, and confirm changes work.
 
 ### Stop Condition
 
@@ -330,8 +340,8 @@ When the planner verifies `finalSuccessCriteria.passes: true`, it outputs `<prom
 Check current state:
 
 ```bash
-# See which stories are done
-cat prd.json | jq '.userStories[] | {id, title, passes}'
+# See the active planner handoff
+cat prd.json | jq '.planning.activeHandoff'
 
 # See global completion status
 cat prd.json | jq '.finalSuccessCriteria'
@@ -345,7 +355,7 @@ git log --oneline -10
 
 ## Customizing the Prompt
 
-If you're using the copied shell script with project-local `DEVELOPER.md` and `PLANNER.md`, customize them for your project:
+If you're using the copied shell script with project-local role prompts, customize them for your project:
 - Add project-specific quality check commands
 - Include codebase conventions
 - Add common gotchas for your stack

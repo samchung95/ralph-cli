@@ -32,7 +32,7 @@ export async function validateCommand(options: ValidateOptions): Promise<void> {
   if (result.valid) {
     if (!options.silent) {
       log.success(`prd.json is valid: ${prdPath}`);
-      await printStoryList(prdPath, options.priority);
+      await printPrdSummary(prdPath, options.priority);
     }
     return;
   }
@@ -44,12 +44,29 @@ export async function validateCommand(options: ValidateOptions): Promise<void> {
   process.exit(1);
 }
 
-async function printStoryList(prdPath: string, priorityFilter?: string): Promise<void> {
+async function printPrdSummary(prdPath: string, priorityFilter?: string): Promise<void> {
   try {
     const content = await readText(prdPath);
     const prd = JSON.parse(content) as {
+      planning?: {
+        activeHandoff?: {
+          agent?: string;
+          objective?: string;
+          status?: string;
+        };
+      };
       userStories?: Array<{ id: string; title: string; storyPriority?: string }>;
     };
+
+    const handoff = prd.planning?.activeHandoff;
+    if (handoff) {
+      console.log("");
+      console.log(chalk.bold("Active Handoff:"));
+      console.log(
+        `  ${chalk.bold(handoff.agent ?? "?")} [${handoff.status ?? "?"}] — ${handoff.objective ?? "(no objective)"}`
+      );
+    }
+
     const allStories = prd.userStories ?? [];
     const stories = priorityFilter
       ? allStories.filter((s) => s.storyPriority === priorityFilter)

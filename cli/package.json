@@ -1,7 +1,7 @@
 {
   "name": "ralph-cli",
   "version": "0.1.0",
-  "description": "CLI tool for Ralph - an autonomous AI agent loop that alternates developer and planner phases until final success criteria pass",
+  "description": "CLI tool for Ralph - an autonomous planner-routed AI agent loop that runs focused handoffs until final success criteria pass",
   "type": "module",
   "bin": {
     "ralph": "./dist/index.js"
@@ -9,6 +9,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --clean",
     "dev": "tsup src/index.ts --format esm --watch",
+    "token-count": "node scripts/count-context-tokens.mjs",
+    "tokens": "node scripts/count-context-tokens.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "gpt-tokenizer": "^3.4.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0"
   },

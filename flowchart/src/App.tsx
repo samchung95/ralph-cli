@@ -37,14 +37,14 @@ const phaseColors: Record<Phase, { bg: string; border: string }> = {
 const allSteps: { id: string; label: string; description: string; phase: Phase }[] = [
   // Setup phase (vertical)
   { id: '1', label: 'Define success', description: 'Write the final outcome', phase: 'setup' },
-  { id: '2', label: 'Create prd.json', description: 'Start with one small slice', phase: 'setup' },
-  { id: '3', label: 'Run ralph.sh', description: 'Starts the develop/plan loop', phase: 'setup' },
+  { id: '2', label: 'Create prd.json', description: 'Add planner context', phase: 'setup' },
+  { id: '3', label: 'Run Ralph', description: 'Starts planner routing', phase: 'setup' },
   // Loop phase
-  { id: '4', label: 'Developer picks story', description: 'Finds next passes: false', phase: 'loop' },
-  { id: '5', label: 'Developer builds it', description: 'Writes code, runs tests', phase: 'loop' },
-  { id: '6', label: 'Commits changes', description: 'If tests pass', phase: 'loop' },
-  { id: '7', label: 'Planner reviews', description: 'Checks work so far', phase: 'loop' },
-  { id: '8', label: 'Plans next slice', description: 'Evolves prd.json', phase: 'loop' },
+  { id: '4', label: 'Planner reviews', description: 'Checks goal and history', phase: 'loop' },
+  { id: '5', label: 'Planner assigns', description: 'Chooses best agent', phase: 'loop' },
+  { id: '6', label: 'Agent executes', description: 'Runs focused handoff', phase: 'loop' },
+  { id: '7', label: 'Agent records', description: 'Updates prd/progress', phase: 'loop' },
+  { id: '8', label: 'Return to planner', description: 'Fresh planner context', phase: 'loop' },
   { id: '9', label: 'Success criteria met?', description: '', phase: 'decision' },
   // Exit
   { id: '10', label: 'Done!', description: 'Final criteria pass', phase: 'done' },
@@ -61,9 +61,11 @@ const notes = [
     "description": "Priority works end to end",
     "passes": false
   },
-  "planning": { "cycle": 1 },
-  "prdChain": [{ "cycle": 1 }],
-  "userStories": [{ "id": "US-001" }]
+  "planning": {
+    "cycle": 1,
+    "currentObjective": "Planner selects handoff"
+  },
+  "prdChain": [{ "cycle": 1 }]
 }`,
   },
   {
@@ -72,8 +74,8 @@ const notes = [
     position: { x: 480, y: 620 },
     color: { bg: '#fdf4f0', border: '#c97a50' },
     content: `Planner checks the global goal.
-If it is not met, it writes the
-next small PRD slice.`,
+If it is not met, it writes
+the next active handoff.`,
   },
 ];
 
@@ -148,9 +150,9 @@ const edgeConnections: { source: string; target: string; sourceHandle?: string; 
   { source: '6', target: '7', sourceHandle: 'left-source', targetHandle: 'right-target' },
   { source: '7', target: '8', sourceHandle: 'left-source', targetHandle: 'right-target' },
   { source: '8', target: '9', sourceHandle: 'left-source', targetHandle: 'right-target' },
-  { source: '9', target: '4', sourceHandle: 'top-source', targetHandle: 'bottom-target', label: 'Yes' },
+  { source: '9', target: '4', sourceHandle: 'top-source', targetHandle: 'bottom-target', label: 'No' },
   // Exit
-  { source: '9', target: '10', sourceHandle: 'bottom', targetHandle: 'top', label: 'No' },
+  { source: '9', target: '10', sourceHandle: 'bottom', targetHandle: 'top', label: 'Yes' },
 ];
 
 function createNode(step: typeof allSteps[0], visible: boolean, position?: { x: number; y: number }): Node {

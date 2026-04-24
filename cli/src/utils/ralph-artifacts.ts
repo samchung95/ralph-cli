@@ -4,8 +4,13 @@ import { fileExists, readText, removePathIfExists } from "./files.js";
 
 export const PHASE_PROMPT_FILES = [
   "DEVELOPER.md",
+  "UXUI.md",
+  "DOCUMENTATION.md",
+  "WEB_BROWSER_SAFE.md",
+  "WEB_BROWSER_BYPASS.md",
   "PLANNER.md",
   "DOCTOR.md",
+  "PROGRESS_INSTRUCT.md",
 ] as const;
 
 export const RUNTIME_PROMPT_FILES = [
@@ -38,8 +43,13 @@ const HISTORICAL_PROMPT_HASHES: Record<PhasePromptFile, readonly string[]> = {
   "DEVELOPER.md": [
     "fa4c6d968bb54d6f1e1f909282bd74655def589ec74073ea0408b0c146521ea4",
   ],
+  "UXUI.md": [],
+  "DOCUMENTATION.md": [],
+  "WEB_BROWSER_SAFE.md": [],
+  "WEB_BROWSER_BYPASS.md": [],
   "PLANNER.md": [],
   "DOCTOR.md": [],
+  "PROGRESS_INSTRUCT.md": [],
 };
 
 const HISTORICAL_PRD_EXAMPLE_HASHES = [
@@ -88,8 +98,13 @@ async function buildKnownArtifactHashes(
   options: CleanupStaleRalphArtifactsOptions
 ): Promise<Record<RalphArtifactFile, Set<string>>> {
   const developerPrompt = await readText(join(options.templateDir, "DEVELOPER.md"));
+  const uxuiPrompt = await readText(join(options.templateDir, "UXUI.md"));
+  const documentationPrompt = await readText(join(options.templateDir, "DOCUMENTATION.md"));
+  const webBrowserSafePrompt = await readText(join(options.templateDir, "WEB_BROWSER_SAFE.md"));
+  const webBrowserBypassPrompt = await readText(join(options.templateDir, "WEB_BROWSER_BYPASS.md"));
   const plannerPrompt = await readText(join(options.templateDir, "PLANNER.md"));
   const doctorPrompt = await readText(join(options.templateDir, "DOCTOR.md"));
+  const progressInstructions = await readText(join(options.templateDir, "PROGRESS_INSTRUCT.md"));
   const prdExample = await readText(join(options.templateDir, "prd.json.example"));
 
   const developerHashes = new Set<string>([
@@ -100,9 +115,29 @@ async function buildKnownArtifactHashes(
     hashNormalizedContent(plannerPrompt),
     ...HISTORICAL_PROMPT_HASHES["PLANNER.md"],
   ]);
+  const uxuiHashes = new Set<string>([
+    hashNormalizedContent(uxuiPrompt),
+    ...HISTORICAL_PROMPT_HASHES["UXUI.md"],
+  ]);
+  const documentationHashes = new Set<string>([
+    hashNormalizedContent(documentationPrompt),
+    ...HISTORICAL_PROMPT_HASHES["DOCUMENTATION.md"],
+  ]);
+  const webBrowserSafeHashes = new Set<string>([
+    hashNormalizedContent(webBrowserSafePrompt),
+    ...HISTORICAL_PROMPT_HASHES["WEB_BROWSER_SAFE.md"],
+  ]);
+  const webBrowserBypassHashes = new Set<string>([
+    hashNormalizedContent(webBrowserBypassPrompt),
+    ...HISTORICAL_PROMPT_HASHES["WEB_BROWSER_BYPASS.md"],
+  ]);
   const doctorHashes = new Set<string>([
     hashNormalizedContent(doctorPrompt),
     ...HISTORICAL_PROMPT_HASHES["DOCTOR.md"],
+  ]);
+  const progressInstructionHashes = new Set<string>([
+    hashNormalizedContent(progressInstructions),
+    ...HISTORICAL_PROMPT_HASHES["PROGRESS_INSTRUCT.md"],
   ]);
   const prdExampleHashes = new Set<string>([
     hashNormalizedContent(prdExample),
@@ -111,9 +146,27 @@ async function buildKnownArtifactHashes(
 
   const runtimeHashes = new Set<string>([
     ...developerHashes,
+    ...uxuiHashes,
+    ...documentationHashes,
+    ...webBrowserSafeHashes,
+    ...webBrowserBypassHashes,
     ...plannerHashes,
     ...doctorHashes,
+    ...progressInstructionHashes,
   ]);
+
+  for (const rolePrompt of [
+    developerPrompt,
+    uxuiPrompt,
+    documentationPrompt,
+    webBrowserSafePrompt,
+    webBrowserBypassPrompt,
+    plannerPrompt,
+  ]) {
+    runtimeHashes.add(
+      hashNormalizedContent(composeGeneratedRuntimePrompt(rolePrompt, progressInstructions))
+    );
+  }
 
   if (options.doctorRuntimePrompt) {
     runtimeHashes.add(hashNormalizedContent(options.doctorRuntimePrompt));
@@ -121,11 +174,23 @@ async function buildKnownArtifactHashes(
 
   return {
     "DEVELOPER.md": developerHashes,
+    "UXUI.md": uxuiHashes,
+    "DOCUMENTATION.md": documentationHashes,
+    "WEB_BROWSER_SAFE.md": webBrowserSafeHashes,
+    "WEB_BROWSER_BYPASS.md": webBrowserBypassHashes,
     "PLANNER.md": plannerHashes,
     "DOCTOR.md": doctorHashes,
+    "PROGRESS_INSTRUCT.md": progressInstructionHashes,
     "prd.json.example": prdExampleHashes,
     "prompt.md": new Set(runtimeHashes),
     "CLAUDE.md": new Set(runtimeHashes),
     "AGENTS.md": new Set(runtimeHashes),
   };
+}
+
+function composeGeneratedRuntimePrompt(
+  rolePrompt: string,
+  progressInstructions: string
+): string {
+  return `${rolePrompt.trimEnd()}\n\n---\n\n${progressInstructions.trimEnd()}\n`;
 }

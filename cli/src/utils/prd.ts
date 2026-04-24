@@ -7,6 +7,15 @@ export interface PrdValidationResult {
 
 type JsonObject = Record<string, unknown>;
 
+const AGENT_ROLES = [
+  "developer",
+  "uxui",
+  "documentation",
+  "WEB_BROWSER_SAFE",
+  "WEB_BROWSER_BYPASS",
+] as const;
+const HANDOFF_STATUSES = ["ready", "active", "complete", "blocked"] as const;
+
 export async function validatePrdFile(prdPath: string): Promise<PrdValidationResult> {
   try {
     const content = await readText(prdPath);
@@ -65,6 +74,75 @@ export function validatePrdData(data: unknown): PrdValidationResult {
   if (planning) {
     requirePositiveInteger(planning, "cycle", "planning.cycle", errors);
     requireString(planning, "currentObjective", "planning.currentObjective", errors);
+
+    const activeHandoff = optionalObject(
+      planning,
+      "activeHandoff",
+      "planning.activeHandoff",
+      errors
+    );
+    if (activeHandoff) {
+      requireStringEnum(
+        activeHandoff,
+        "agent",
+        [...AGENT_ROLES],
+        "planning.activeHandoff.agent",
+        errors
+      );
+      requireString(
+        activeHandoff,
+        "objective",
+        "planning.activeHandoff.objective",
+        errors
+      );
+
+      const scope = requireObject(
+        activeHandoff,
+        "scope",
+        "planning.activeHandoff.scope",
+        errors
+      );
+      if (scope) {
+        requireStringArray(
+          scope,
+          "include",
+          "planning.activeHandoff.scope.include",
+          errors
+        );
+        requireStringArray(
+          scope,
+          "exclude",
+          "planning.activeHandoff.scope.exclude",
+          errors
+        );
+      }
+
+      requireStringArray(
+        activeHandoff,
+        "rules",
+        "planning.activeHandoff.rules",
+        errors
+      );
+      requireString(
+        activeHandoff,
+        "comments",
+        "planning.activeHandoff.comments",
+        errors
+      );
+      requireStringArray(
+        activeHandoff,
+        "successCriteria",
+        "planning.activeHandoff.successCriteria",
+        errors
+      );
+      requireStringEnum(
+        activeHandoff,
+        "status",
+        [...HANDOFF_STATUSES],
+        "planning.activeHandoff.status",
+        errors
+      );
+    }
   }
 
   const prdChain = requireObjectArray(data, "prdChain", "prdChain", errors);
@@ -151,6 +229,23 @@ function requireObject(
   const value = parent[key];
   if (!isObject(value)) {
     errors.push(`${path} must be an object.`);
+    return null;
+  }
+  return value;
+}
+
+function optionalObject(
+  parent: JsonObject,
+  key: string,
+  path: string,
+  errors: string[]
+): JsonObject | null {
+  const value = parent[key];
+  if (value === undefined) {
+    return null;
+  }
+  if (!isObject(value)) {
+    errors.push(`${path} must be an object when present.`);
     return null;
   }
   return value;
